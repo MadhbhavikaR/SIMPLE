@@ -19,3 +19,9 @@ docker compose up -d
 # 4. Validate
 python -m pytest tests/ -v
 ```
+
+
+### TODO:
+1. Add support for custom files overrides/<path>/file.<ext>.jinja and rename <service>.yaml.jinja -> service.yaml.jinja 
+2.use the detected os to have customization to move out of diet pi
+3.add custome notifications like telegram, as service
