@@ -7,7 +7,7 @@ import secrets
 import string
 import yaml
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 import questionary
 # from cryptography.fernet import Fernet
 
@@ -120,11 +120,11 @@ class ConfigManager:
     def _detect_timezone(self) -> str:
         """Auto-detect timezone."""
         try:
-            # Try reading from /etc/timezone
-            with open('/etc/timezone', 'r') as f:
+        # Try reading from /etc/timezone
+            with open("/etc/timezone", "r") as f:
                 return f.read().strip()
-        except:
-                return os.environ.get('TZ', 'UTC')
+        except (FileNotFoundError, PermissionError, OSError):
+            return os.environ.get("TZ", "UTC")
     
     def _detect_filesystem(self) -> tuple:
         """

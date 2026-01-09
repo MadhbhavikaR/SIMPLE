@@ -111,7 +111,7 @@ class ConfigReader:
         ]
         
         template_path = None
-        template_name_to_load = None
+        # template_name_to_load = None
         
         for variant in template_variants:
             test_path = self.template_dir / variant

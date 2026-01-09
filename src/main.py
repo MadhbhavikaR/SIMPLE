@@ -3,6 +3,9 @@
 import sys
 import os
 from pathlib import Path
+from simple.native.apparmor_harden import AppArmorEnforcer
+from simple.native.ufw_harden import UfwEnforcer
+from simple.native.ssh_harden import SSHEnforcer
 from simple.prereq_detector import PrerequisiteDetector
 
 import questionary
