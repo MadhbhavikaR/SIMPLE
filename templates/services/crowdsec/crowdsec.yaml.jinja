@@ -1,0 +1,24 @@
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    hostname: crowdsec
+    networks:
+      - app
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    environment:
+      - GID=${PGID}
+      - CUSTOM_HOSTNAME=${HOSTNAME}
+      - BOUNCER_KEY_SWAG_FILE=/run/secrets/CROWDSEC_API_KEY
+      - COLLECTIONS=crowdsecurity/appsec-virtual-patching crowdsecurity/appsec-generic-rules crowdsecurity/nginx crowdsecurity/http-cve crowdsecurity/whitelist-good-actors
+    volumes:
+      - ${VOLUMES_DIR}/crowdsec/config:/etc/crowdsec:rw
+      - ${VOLUMES_DIR}/crowdsec/data:/var/lib/crowdsec/data:rw
+      - ${VOLUMES_DIR}/swag/log/nginx:/var/log/swag:ro
+      - /var/log:/var/log/host:ro
+    healthcheck:
+      test: ["CMD", "cscli", "capi", "status"]
+      interval: 10s
+      timeout: 10s
+      retries: 15

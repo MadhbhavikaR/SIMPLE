@@ -1,0 +1,17 @@
+  mariadb:
+    image: lscr.io/linuxserver/mariadb:latest
+    container_name: mariadb
+    hostname: mariadb
+    <<: *lsio-defaults
+    networks:
+      - db
+    volumes:
+      - ${VOLUMES_DIR}/mariadb:/config:rw
+      - ${VOLUMES_DIR}/mariadb/initdb.d:/config/initdb.d:ro
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=${UMASK}
+      - TZ=${TZ}
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/MARIADB_ROOT_PASSPHRASE
+    stop_grace_period: 30s

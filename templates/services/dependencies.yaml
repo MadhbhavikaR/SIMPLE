@@ -1,0 +1,38 @@
+# Service Dependencies
+# Defines which services depend on others
+# Format: service_name: [list of dependencies]
+
+dependencies:
+  swag:
+    - cloudflared  # SWAG needs cloudflared for tunnel
+    - crowdsec     # Optional: SWAG can work without crowdsec
+  
+  nextcloud:
+    - mariadb      # Nextcloud needs database
+    - swag         # Optional: for reverse proxy
+  
+  authelia:
+    - mariadb      # Authelia needs database
+  
+  crowdsec:
+    - cloudflared  # CrowdSec monitors cloudflared
+  
+  calibre-web-automated:
+    - swag         # Optional: for reverse proxy
+  
+  photoprism:
+    - swag         # Optional: for reverse proxy
+
+# Optional dependencies (services that enhance functionality but aren't required)
+optional_dependencies:
+  swag:
+    - crowdsec     # CrowdSec integration for SWAG
+  
+  nextcloud:
+    - swag         # Reverse proxy (can run standalone)
+  
+  calibre-web-automated:
+    - swag         # Reverse proxy (can run standalone)
+  
+  photoprism:
+    - swag         # Reverse proxy (can run standalone)

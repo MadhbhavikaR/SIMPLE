@@ -1,0 +1,19 @@
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    hostname: cloudflared
+    user: "${PUID}:${PGID}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    environment:
+      - TUNNEL_TOKEN_FILE=/run/secrets/CF_DOCKER_TOKEN
+    command: >
+      sh -c "tunnel --no-autoupdate run --token $(cat /run/secrets/CF_DOCKER_TOKEN)"
+    restart: unless-stopped

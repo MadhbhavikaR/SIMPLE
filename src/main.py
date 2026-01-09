@@ -3,6 +3,8 @@
 import sys
 import os
 from pathlib import Path
+from simple.prereq_detector import PrerequisiteDetector
+
 import questionary
 from simple.config import ConfigManager
 from simple.engine import DockerEngine
@@ -11,23 +13,82 @@ from simple.notifier import Notifier
 from tests.test_suite import run_validation_suite
 
 def main():
-    # Security check: Validate environment
-    if os.geteuid() != 0:
+    # Parse command line arguments
+    validation_only = '--validate' in sys.argv or '-v' in sys.argv
+    
+    # Security check: Validate environment (only for non-validation mode)
+    if not validation_only and os.geteuid() != 0:
         print("❌ CRITICAL: Must run as root (sudo python main.py)")
         sys.exit(1)
     
     print("🚀 === S.I.M.P.L.E (Self-hosted Infrastructure Made Painless with Linux & Engineering) ===\n")
-    
+
     # Step 1: System Detection [Single Responsibility]
     config = ConfigManager()
     config.detect_system()
     
+    print("🔍 Checking prerequisites...")
+    detector = PrerequisiteDetector()
+    detector.detect_all()
+    
+    if not detector.print_summary():
+        print("❌ Install missing prerequisites first:")
+        print("  sudo apt install ufw fail2ban apparmor-utils")
+        if not validation_only:
+            sys.exit(1)
+
+    if validation_only:
+        # Validation-only mode
+        print("\n🔍 VALIDATION MODE - Checking existing configuration...")
+        config_path = Path("docker/docker-compose.yaml")
+        if not config_path.exists():
+            print(f"❌ Configuration not found at {config_path}")
+            sys.exit(1)
+        
+        # Load context from existing .env if available
+        env_path = Path("docker/.env")
+        context = config.context
+        if env_path.exists():
+            with open(env_path) as f:
+                for line in f:
+                    if '=' in line and not line.strip().startswith('#'):
+                        key, value = line.strip().split('=', 1)
+                        context[key] = value
+        
+        results = run_validation_suite(context)
+        print(f"\n📊 Validation Results:")
+        print(f"   Total: {results['total']}")
+        print(f"   Passed: {results['passed']}")
+        print(f"   Failures: {results['failures']}")
+        print(f"   Errors: {results['errors']}")
+        
+        if results['passed'] == results['total']:
+            print("\n✅ All validations passed!")
+            sys.exit(0)
+        else:
+            print("\n❌ Some validations failed")
+            sys.exit(1)
+
     # Step 2: Interactive Wizard
-    context = config.wizard()
+    # Check if this is a regeneration (existing compose file)
+    docker_dir = context.get('BASE_DIR', Path.cwd()) / 'docker'
+    compose_path = docker_dir / 'docker-compose.yaml'
+    is_regeneration = compose_path.exists()
+    
+    context = config.wizard(load_existing=is_regeneration)
     
     # Step 3: Service Selection
     engine = DockerEngine(context)
-    engine.select_services()
+    
+    if is_regeneration:
+        print("\n🔄 Regeneration mode detected")
+        if questionary.confirm("Add new services to existing setup?", default=True).ask():
+            engine.select_services(allow_incremental=True)
+        else:
+            print("Starting fresh setup...")
+            engine.select_services(allow_incremental=False)
+    else:
+        engine.select_services(allow_incremental=False)
     
     # Step 4: Generate Infrastructure
     engine.generate()
@@ -35,14 +96,30 @@ def main():
     # Step 5: Validation
     if questionary.confirm("Run validation suite?").ask():
         results = run_validation_suite(context)
-        print(f"\n✅ Validation: {sum(results.values())}/{len(results)} passed")
+        print(f"\n✅ Validation: {results['passed']}/{results['total']} passed")
     
     # Step 6: Security Hardening (optional)
     if questionary.confirm("Apply firewall rules?").ask():
         security = SecurityEnforcer(context)
-        security.apply_ufw()
+        # Preview first
+        rules = security.preview_ufw_rules()
+        print("\n📋 UFW Rules Preview:")
+        for rule in rules:
+            print(f"   {rule}")
+        
+        if questionary.confirm("Apply these rules?").ask():
+            security.apply_ufw(dry_run=False)
+        else:
+            print("⚠️  Skipping UFW configuration")
     
-    # Step 7: Notifications
+    # Step 7: AppArmor (optional)
+    security = SecurityEnforcer(context)
+    if security.detect_apparmor():
+        if questionary.confirm("Install AppArmor profiles?").ask():
+            # TODO: Implement AppArmor profile installation
+            print("⚠️  AppArmor profile installation not yet implemented")
+    
+    # Step 8: Notifications
     notifier = Notifier(context)
     notifier.send("Setup completed successfully!")
     

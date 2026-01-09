@@ -1,0 +1,19 @@
+  calibre-web-automated:
+    image: crocodilestick/calibre-web-automated:latest
+    container_name: calibre-web-automated
+    hostname: calibre-web-automated
+    <<: *lsio-defaults
+    networks:
+      - app
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=${UMASK}
+      - TZ=${TZ}
+      - NETWORK_SHARE_MODE=false
+      - CWA_PORT_OVERRIDE=8083
+    volumes:
+      - ${VOLUMES_DIR}/calibre/config:/config:rw
+      - ${VOLUMES_DIR}/nextcloud/data/prasad.madhbhavikar@gmail.com/files/system_managed_folders/Books:/cwa-book-ingest:ro
+      - ${VOLUMES_DIR}/calibre/library:/calibre-library:rw
+      - ${VOLUMES_DIR}/calibre/plugins:/config/.config/calibre/plugins:ro

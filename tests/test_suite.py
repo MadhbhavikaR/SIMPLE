@@ -6,10 +6,11 @@ Comprehensive Validation Suite
 import unittest
 import tempfile
 import os
+import yaml
 from pathlib import Path
-from secops.config import ConfigManager
-from secops.engine import DockerEngine
-from secops.services.gateways import CloudflaredService, SwagService
+from simple.config import ConfigManager
+from simple.engine import DockerEngine
+from simple.services.gateways import CloudflaredService, SwagService
 
 class TestHomeInfraSuite(unittest.TestCase):
     
@@ -47,6 +48,30 @@ class TestHomeInfraSuite(unittest.TestCase):
         self.assertIn('cap_drop', yaml_str)
         self.assertIn('read_only: true', yaml_str)
     
+    def test_network_isolation(self):
+        """Network isolation is enforced."""
+        context = {'PUID': '1000', 'PGID': '1000', 'VOLUMES_DIR': Path('/tmp/volumes')}
+        engine = DockerEngine(context)
+        engine.selected_services = [CloudflaredService(), SwagService()]
+        engine._write_compose_file()
+        
+        compose_path = context.get('DOCKER_DIR', Path('/tmp')) / 'docker-compose.yaml'
+        if compose_path.exists():
+            with open(compose_path) as f:
+                compose = yaml.safe_load(f)
+                self.assertIn('networks', compose)
+                self.assertIn('edge', compose['networks'])
+                self.assertIn('app', compose['networks'])
+                self.assertIn('db', compose['networks'])
+    
+    def test_yaml_syntax(self):
+        """Generated YAML is valid."""
+        context = {'PUID': '1000', 'PGID': '1000', 'VOLUMES_DIR': Path('/tmp/volumes')}
+        swag = SwagService()
+        yaml_str = swag.generate_service_yaml(context)
+        # Should not raise exception
+        yaml.safe_load(yaml_str)
+    
     def tearDown(self):
         import shutil
         shutil.rmtree(self.temp_dir)
@@ -58,9 +83,11 @@ def run_validation_suite(context=None) -> dict:
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     
+    passed = result.testsRun - len(result.failures) - len(result.errors)
+    
     return {
         'total': result.testsRun,
-        'passed': len([t for t in result.failures + result.errors]),
+        'passed': passed,
         'failures': len(result.failures),
         'errors': len(result.errors)
     }

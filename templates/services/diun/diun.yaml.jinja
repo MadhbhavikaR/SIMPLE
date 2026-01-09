@@ -1,0 +1,14 @@
+  diun:
+    image: crazymax/diun:latest
+    container_name: diun
+    hostname: diun
+    <<: *vault-app-defaults
+    networks:
+      - edge
+    environment:
+      - TZ=${TZ}
+      - DIUN_WATCH_WORKERS=10
+      - DIUN_PROVIDERS_DOCKER=true
+      - DIUN_PROVIDERS_DOCKER_ENDPOINT=tcp://socket-proxy:2375
+    volumes:
+      - ${VOLUMES_DIR}/diun:/data:rw

@@ -1,0 +1,16 @@
+  nextcloud:
+    image: lscr.io/linuxserver/nextcloud:latest
+    container_name: nextcloud
+    hostname: nextcloud
+    <<: *lsio-defaults
+    networks:
+      - app
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=${UMASK}
+      - TZ=${TZ}
+    volumes:
+      - ${VOLUMES_DIR}/nextcloud/config:/config:rw
+      - ${VOLUMES_DIR}/nextcloud/data:/data:rw
+      - ${VOLUMES_DIR}/nextcloud/custom-cont-init.d:/custom-cont-init.d:ro

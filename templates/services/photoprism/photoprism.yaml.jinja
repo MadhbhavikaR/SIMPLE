@@ -1,0 +1,15 @@
+  photoprism:
+    image: lscr.io/linuxserver/photoprism:latest
+    container_name: photoprism
+    hostname: photoprism
+    <<: *lsio-defaults
+    networks:
+      - app
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=${UMASK}
+      - TZ=${TZ}
+      - PHOTOPRISM_ADMIN_PASSWORD_FILE=/run/secrets/PHOTOPRISM_ADMIN_PASSWORD
+    volumes:
+      - ${VOLUMES_DIR}/photoprism:/config:rw

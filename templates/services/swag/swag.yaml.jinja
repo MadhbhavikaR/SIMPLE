@@ -1,0 +1,30 @@
+  swag:
+    image: lscr.io/linuxserver/swag:latest
+    container_name: swag
+    hostname: swag
+    cap_add:
+      - NET_ADMIN
+    <<: *lsio-defaults
+    networks:
+      - edge
+      - app
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=${UMASK}
+      - TZ=${TZ}
+      - URL=${DOMAIN}
+      - SUBDOMAINS=${SUBDOMAINS}
+      - ONLY_SUBDOMAINS=true
+      - STAGING=${SWAG_STAGING}
+      - VALIDATION=dns
+      - DNSPLUGIN=cloudflare
+      - EMAIL=${EMAIL}
+      - PROPAGATION=60
+{% if 'crowdsec' in DEPENDENCIES %}
+      - CROWDSEC_LAPI_URL=http://crowdsec:8080
+      - CROWDSEC_API_KEY_FILE=/run/secrets/CROWDSEC_API_KEY
+{% endif %}
+    volumes:
+      - ${VOLUMES_DIR}/swag:/config:rw
+    restart: unless-stopped

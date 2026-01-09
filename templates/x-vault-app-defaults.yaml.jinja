@@ -1,0 +1,10 @@
+x-vault-app-defaults: &vault-app-defaults
+  user: "${U_ID}:${G_ID}"
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=64m
+  restart: unless-stopped
