@@ -1,7 +1,4 @@
-"""Notification system - initially stubbed for future plugins."""
-
 from typing import Dict, Any
-from pathlib import Path
 
 
 class Notifier:

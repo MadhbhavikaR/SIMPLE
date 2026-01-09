@@ -1,7 +1,6 @@
 import os
 import pwd
 import grp
-import time
 import socket
 import subprocess
 import secrets
@@ -10,7 +9,7 @@ import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import questionary
-from cryptography.fernet import Fernet
+# from cryptography.fernet import Fernet
 
 class ConfigManager:
     """Detects system parameters and manages configuration context."""
@@ -125,11 +124,7 @@ class ConfigManager:
             with open('/etc/timezone', 'r') as f:
                 return f.read().strip()
         except:
-            try:
-                # Fallback to TZ environment variable
                 return os.environ.get('TZ', 'UTC')
-            except:
-                return "UTC"
     
     def _detect_filesystem(self) -> tuple:
         """
@@ -164,7 +159,7 @@ class ConfigManager:
                 )
                 if result.returncode == 0:
                     return str(vault_path), result.stdout.strip()
-            except:
+            except (subprocess.TimeoutExpired, OSError):
                 pass
         
         return None, None

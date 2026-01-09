@@ -12,7 +12,7 @@ import json
 import yaml
 import jinja2
 from pathlib import Path
-from typing import Dict, Any, Union, Optional, List
+from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 
 # Type aliases for clarity
@@ -117,7 +117,7 @@ class ConfigReader:
             test_path = self.template_dir / variant
             if test_path.exists():
                 template_path = test_path
-                template_name_to_load = variant
+                # template_name_to_load = variant
                 break
         
         if not template_path or not template_path.exists():

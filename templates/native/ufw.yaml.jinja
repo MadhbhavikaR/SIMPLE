@@ -1,0 +1,10 @@
+base:
+  - "ufw default deny incoming"
+  - "ufw default allow outgoing"
+services:
+  http:
+    - "ufw allow 80/tcp comment \"HTTP\""
+    - "ufw allow 443/tcp comment \"HTTPS\""
+  pihole:
+    - "ufw allow 53/udp comment \"Pi-hole DNS\""
+    - "ufw allow 53/tcp comment \"Pi-hole DNS TCP\""

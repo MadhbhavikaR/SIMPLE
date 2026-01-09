@@ -107,7 +107,7 @@ class DockerEngine:
         if allow_incremental:
             existing_compose = self._load_existing_compose()
             if existing_compose:
-                print(f"🔄 Regeneration mode: Found existing services")
+                print("🔄 Regeneration mode: Found existing services")
         
         # Load dependencies
         self._load_dependencies()

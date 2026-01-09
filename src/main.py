@@ -8,7 +8,7 @@ from simple.prereq_detector import PrerequisiteDetector
 import questionary
 from simple.config import ConfigManager
 from simple.engine import DockerEngine
-from simple.security import SecurityEnforcer
+
 from simple.notifier import Notifier
 # from tests.suite_test import run_validation_suite
 
@@ -98,30 +98,39 @@ def main():
     engine.generate()
     
     # Step 5: Validation
-    if questionary.confirm("Run validation suite?").ask():
-        results = run_validation_suite(context)
-        print(f"\n✅ Validation: {results['passed']}/{results['total']} passed")
+    # if questionary.confirm("Run validation suite?").ask():
+    #     results = run_validation_suite(context)
+    #     print(f"\n✅ Validation: {results['passed']}/{results['total']} passed")
     
     # Step 6: Security Hardening (optional)
+    
+    # wire context and DI
+    context['ssh_enforcer'] = SSHEnforcer(context)
+
     if questionary.confirm("Apply firewall rules?").ask():
-        security = SecurityEnforcer(context)
-        # Preview first
-        rules = security.preview_ufw_rules()
+        ufw = UfwEnforcer(context)
+        rules = ufw.process()
         print("\n📋 UFW Rules Preview:")
         for rule in rules:
             print(f"   {rule}")
-        
+
         if questionary.confirm("Apply these rules?").ask():
-            security.apply_ufw(dry_run=False)
+            success = ufw.apply(rules, dry_run=False)
+            if not success:
+                print("❌ Failed to apply UFW rules")
         else:
             print("⚠️  Skipping UFW configuration")
-    
-    # Step 7: AppArmor (optional)
-    security = SecurityEnforcer(context)
-    if security.detect_apparmor():
+
+    # AppArmor (optional)
+    apparmor = AppArmorEnforcer(context)
+    if apparmor.detect():
         if questionary.confirm("Install AppArmor profiles?").ask():
-            # TODO: Implement AppArmor profile installation
-            print("⚠️  AppArmor profile installation not yet implemented")
+            plan = apparmor.process()
+            success = apparmor.apply(plan, dry_run=False)
+            if not success:
+                print("❌ Failed to install AppArmor profile")
+    else:
+        print("⚠️  AppArmor not available; skipping.")
     
     # Step 8: Notifications
     notifier = Notifier(context)

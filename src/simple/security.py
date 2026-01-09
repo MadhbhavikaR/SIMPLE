@@ -88,7 +88,6 @@ class SecurityEnforcer:
         return True
     
     def _detect_ssh_port(self) -> int:
-        """Detect SSH port from systemd or default."""
         try:
             result = subprocess.run(
                 ['ss', '-tlnp'],
@@ -96,18 +95,28 @@ class SecurityEnforcer:
                 text=True,
                 timeout=5
             )
-            if result.returncode == 0:
-                for line in result.stdout.split('\n'):
-                    if 'ssh' in line.lower() or ':22 ' in line:
-                        # Extract port from line
-                        parts = line.split()
-                        if parts:
-                            addr = parts[3]
-                            if ':' in addr:
-                                port = int(addr.split(':')[-1])
-                                return port
-        except:
-            pass
+            result.check_returncode()
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+            return 22
+
+        for line in result.stdout.splitlines():
+            low = line.lower()
+            if 'ssh' in low or ':22 ' in line or line.strip().endswith(':22'):
+                parts = line.split()
+                if len(parts) >= 4:
+                    addr = parts[3]
+                    # strip possible PID/Program in brackets (e.g., users:(("sshd",pid=1234,...)))
+                    # handle IPv6 addresses like [::]:22
+                    if addr.startswith('[') and ']' in addr:
+                        # addr could be like [::]:22 or [::1]:22
+                        addr = addr.rsplit(']', 1)[-1]
+                    # If addr contains multiple colons (IPv6 without brackets), attempt to take last segment
+                    if ':' in addr:
+                        try:
+                            port = int(addr.split(':')[-1])
+                            return port
+                        except ValueError:
+                            continue
         return 22  # Default SSH port
     
     def _detect_lan_subnet(self, interfaces: List[str]) -> Optional[str]:
