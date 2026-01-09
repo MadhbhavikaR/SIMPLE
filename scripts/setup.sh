@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # setup.sh - S.I.M.P.L.E (Self-hosted Infrastructure Made Painless with Linux & Engineering)
 # ==========================================================================================
 # Purpose: Creates Python virtual environment and installs dependencies
