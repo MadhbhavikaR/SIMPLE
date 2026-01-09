@@ -1,0 +1,10 @@
+[project]
+name = "simple"
+version = "0.0.1"
+description = "Self-hosted Infrastructure Made Painless with Linux & Engineering"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "cryptography>=46.0.3",
+    "questionary>=2.1.1",
+]
