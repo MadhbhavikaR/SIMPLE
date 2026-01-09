@@ -182,7 +182,7 @@ class ConfigReader:
         with open(template_path, 'r') as f:
             content = f.read()
             for var in required_vars:
-                if f"{{{{ {var} }}}}" in content or f"{{{{'{var}'}}}}}" in content:
+                if f"{{{{ {var} }}}}" in content or f"{{{{'{var}'}}}}" in content:
                     if var not in self.jinja_env.globals:
                         missing.append(var)
         

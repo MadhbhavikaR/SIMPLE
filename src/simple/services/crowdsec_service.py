@@ -1,9 +1,6 @@
-"""Security services."""
-
-from .base import ServiceStrategy
+from simple.core.container import ServiceStrategy
 from typing import Dict, List, Any
 from pathlib import Path
-
 
 class CrowdSecService(ServiceStrategy):
     """CrowdSec security service."""

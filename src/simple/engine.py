@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, Any, List
 import questionary
 from .services import AVAILABLE_SERVICES
-from .services.base import ServiceStrategy
+from .core.container import ServiceStrategy
 
 class DockerEngine:
     """Generates complete Docker Compose infrastructure."""

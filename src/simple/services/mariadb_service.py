@@ -1,9 +1,6 @@
-"""Database services."""
-
-from .base import ServiceStrategy
+from simple.core.container import ServiceStrategy
 from typing import Dict, List, Any
 from pathlib import Path
-
 
 class MariaDBService(ServiceStrategy):
     """MariaDB database service (LinuxServer.io)."""

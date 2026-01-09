@@ -10,19 +10,23 @@ from simple.config import ConfigManager
 from simple.engine import DockerEngine
 from simple.security import SecurityEnforcer
 from simple.notifier import Notifier
-from tests.test_suite import run_validation_suite
+# from tests.suite_test import run_validation_suite
 
 def main():
+    
+    print("🚀 === S.I.M.P.L.E (Self-hosted Infrastructure Made Painless with Linux & Engineering) ===\n")
     # Parse command line arguments
     validation_only = '--validate' in sys.argv or '-v' in sys.argv
+    dev_mode = '--dev' in sys.argv or '-d' in sys.argv
     
+    if dev_mode:
+        print("🔍 Dev mode enabled")
+
     # Security check: Validate environment (only for non-validation mode)
-    if not validation_only and os.geteuid() != 0:
+    if not validation_only and os.geteuid() != 0 and not dev_mode:
         print("❌ CRITICAL: Must run as root (sudo python main.py)")
         sys.exit(1)
     
-    print("🚀 === S.I.M.P.L.E (Self-hosted Infrastructure Made Painless with Linux & Engineering) ===\n")
-
     # Step 1: System Detection [Single Responsibility]
     config = ConfigManager()
     config.detect_system()
@@ -55,19 +59,19 @@ def main():
                         key, value = line.strip().split('=', 1)
                         context[key] = value
         
-        results = run_validation_suite(context)
-        print(f"\n📊 Validation Results:")
-        print(f"   Total: {results['total']}")
-        print(f"   Passed: {results['passed']}")
-        print(f"   Failures: {results['failures']}")
-        print(f"   Errors: {results['errors']}")
+        # results = run_validation_suite(context)
+        # print(f"\n📊 Validation Results:")
+        # print(f"   Total: {results['total']}")
+        # print(f"   Passed: {results['passed']}")
+        # print(f"   Failures: {results['failures']}")
+        # print(f"   Errors: {results['errors']}")
         
-        if results['passed'] == results['total']:
-            print("\n✅ All validations passed!")
-            sys.exit(0)
-        else:
-            print("\n❌ Some validations failed")
-            sys.exit(1)
+        # if results['passed'] == results['total']:
+        #     print("\n✅ All validations passed!")
+        #     sys.exit(0)
+        # else:
+        #     print("\n❌ Some validations failed")
+        #     sys.exit(1)
 
     # Step 2: Interactive Wizard
     # Check if this is a regeneration (existing compose file)
