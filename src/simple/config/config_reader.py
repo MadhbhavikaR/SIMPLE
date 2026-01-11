@@ -51,7 +51,7 @@ class ConfigReader:
         Read YAML config by name and return as dict or JSON string.
         
         Args:
-            config_name: Filename (e.g., 'prereqs.yaml', 'app-settings')
+            config_name: Filename (e.g., 'prerequisites.yaml', 'app-settings')
             as_json: Return JSON string instead of Python dict
             
         Returns:
@@ -207,12 +207,12 @@ def main():
     reader = ConfigReader()
     
     # Example 1: Read YAML config as dict
-    prereqs = reader.read_yaml_config("prereqs")
+    prereqs = reader.read_yaml_config("prerequisites")
     if prereqs.success:
-        print("✅ Prereqs loaded:", json.dumps(prereqs.data, indent=2))
+        print("✅ Prerequisites loaded:", json.dumps(prereqs.data, indent=2))
     
     # Example 2: Read as JSON string
-    prereqs_json = reader.read_yaml_config("prereqs", as_json=True)
+    prereqs_json = reader.read_yaml_config("prerequisites", as_json=True)
     if prereqs_json.success:
         print("\n📄 JSON output:", prereqs_json.data[:200], "...")
     

@@ -9,7 +9,7 @@ from simple.native.ssh_harden import SSHEnforcer
 from simple.prereq_detector import PrerequisiteDetector
 
 import questionary
-from simple.config import ConfigManager
+from simple.config import ConfigManager, ConfigReader
 from simple.engine import DockerEngine
 
 from simple.notifier import Notifier
@@ -34,13 +34,12 @@ def main():
     config = ConfigManager()
     config.detect_system()
     
+    config_reader = ConfigReader()
     print("🔍 Checking prerequisites...")
-    detector = PrerequisiteDetector()
-    detector.detect_all()
+    detector = PrerequisiteDetector(config_reader)
+    detector.detect()
     
     if not detector.print_summary():
-        print("❌ Install missing prerequisites first:")
-        print("  sudo apt install ufw fail2ban apparmor-utils")
         if not validation_only:
             sys.exit(1)
 

@@ -14,7 +14,7 @@ class TestPrerequisiteDetector(unittest.TestCase):
     
     def setUp(self):
         self.temp_dir = Path(tempfile.mkdtemp())
-        self.detector = PrerequisiteDetector(self.temp_dir / "prereqs.yaml")
+        self.detector = PrerequisiteDetector(self.temp_dir / "prerequisites.yaml")
     
     def test_detect_ufw_installed(self):
         """Detect UFW when binary exists."""
