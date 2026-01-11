@@ -13,19 +13,12 @@ import yaml
 import jinja2
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from dataclasses import dataclass
+
+from simple.config.models import Configuration
 
 # Type aliases for clarity
-ConfigData = Dict[str, Any]
-TemplateVars = Dict[str, Any]
 
-@dataclass
-class ConfigResult:
-    """Standardized config load result."""
-    success: bool
-    data: Optional[ConfigData] = None
-    error: Optional[str] = None
-    path: Optional[Path] = None
+TemplateVars = Dict[str, Any]
 
 class ConfigReader:
     """Unified configuration reader with YAML→JSON and template rendering."""
@@ -46,7 +39,7 @@ class ConfigReader:
         env.filters['tojson'] = json.dumps
         self.jinja_env = env
     
-    def read_yaml_config(self, config_name: str, as_json: bool = False) -> ConfigResult:
+    def read_yaml_config(self, config_name: str, as_json: bool = False) -> Configuration:
         """
         Read YAML config by name and return as dict or JSON string.
         
@@ -55,12 +48,12 @@ class ConfigReader:
             as_json: Return JSON string instead of Python dict
             
         Returns:
-            ConfigResult with data or error
+            Config with data or error
         """
         config_path = self.config_dir / f"{config_name}.yaml"
         
         if not config_path.exists():
-            return ConfigResult(
+            return Configuration(
                 success=False, 
                 error=f"Config not found: {config_path}",
                 path=config_path
@@ -72,25 +65,25 @@ class ConfigReader:
             
             if as_json:
                 json_str = json.dumps(data, indent=2, sort_keys=False)
-                return ConfigResult(success=True, data=json_str, path=config_path)
+                return Configuration(success=True, data=json_str, path=config_path)
             
-            return ConfigResult(success=True, data=data, path=config_path)
+            return Configuration(success=True, data=data, path=config_path)
             
         except yaml.YAMLError as e:
-            return ConfigResult(
+            return Configuration(
                 success=False,
                 error=f"YAML parsing error: {str(e)}",
                 path=config_path
             )
         except Exception as e:
-            return ConfigResult(
+            return Configuration(
                 success=False,
                 error=f"Read error: {str(e)}",
                 path=config_path
             )
     
     def read_template(self, template_name: str, vars_dict: TemplateVars, 
-                     output_path: Optional[Path] = None) -> ConfigResult:
+                     output_path: Optional[Path] = None) -> Configuration:
         """
         Render Jinja2 template with variables.
         
@@ -101,7 +94,7 @@ class ConfigReader:
             output_path: Optional output file path
             
         Returns:
-            ConfigResult with rendered content
+            Config with rendered content
         """
         # Try different template name variations
         template_variants = [
@@ -121,7 +114,7 @@ class ConfigReader:
                 break
         
         if not template_path or not template_path.exists():
-            return ConfigResult(
+            return Configuration(
                 success=False,
                 error=f"Template not found. Tried: {', '.join([str(self.template_dir / v) for v in template_variants])}",
                 path=None
@@ -144,22 +137,22 @@ class ConfigReader:
                 os.chmod(output_path, 0o0644)
                 result_data = rendered  # Still return content
             
-            return ConfigResult(success=True, data=result_data, path=template_path)
+            return Configuration(success=True, data=result_data, path=template_path)
             
         except jinja2.TemplateError as e:
-            return ConfigResult(
+            return Configuration(
                 success=False,
                 error=f"Jinja2 render error: {str(e)}",
                 path=template_path
             )
         except Exception as e:
-            return ConfigResult(
+            return Configuration(
                 success=False,
                 error=f"Template error: {str(e)}",
                 path=template_path
             )
     
-    def read_all_configs(self) -> Dict[str, ConfigResult]:
+    def read_all_configs(self) -> Dict[str, Configuration]:
         """Read all YAML configs in config directory."""
         results = {}
         for config_file in self.config_dir.glob("*.yaml"):
@@ -187,49 +180,3 @@ class ConfigReader:
                         missing.append(var)
         
         return missing
-
-# Utility functions for direct usage
-def load_yaml_config(config_name: str, config_dir: str = "config") -> ConfigResult:
-    """Convenience function."""
-    reader = ConfigReader(Path(config_dir))
-    return reader.read_yaml_config(config_name)
-
-def render_template(template_name: str, vars_dict: TemplateVars, 
-                   template_dir: str = "templates", 
-                   output_path: Optional[str] = None) -> ConfigResult:
-    """Convenience function."""
-    reader = ConfigReader(Path(template_dir))
-    return reader.read_template(template_name, vars_dict, 
-                              Path(output_path) if output_path else None)
-
-def main():
-    """CLI demonstration."""
-    reader = ConfigReader()
-    
-    # Example 1: Read YAML config as dict
-    prereqs = reader.read_yaml_config("prerequisites")
-    if prereqs.success:
-        print("✅ Prerequisites loaded:", json.dumps(prereqs.data, indent=2))
-    
-    # Example 2: Read as JSON string
-    prereqs_json = reader.read_yaml_config("prerequisites", as_json=True)
-    if prereqs_json.success:
-        print("\n📄 JSON output:", prereqs_json.data[:200], "...")
-    
-    # Example 3: Render template
-    vars_dict = {
-        "PUID": "100",
-        "PGID": "986",
-        "DOMAIN": "example.com",
-        "VOLUMES_DIR": "/mnt/vault/volumes"
-    }
-    result = reader.read_template("docker-compose", vars_dict)
-    if result.success:
-        print("\n🎨 Template rendered successfully")
-    
-    # Example 4: All configs
-    all_configs = reader.read_all_configs()
-    print(f"\n📂 Found {len(all_configs)} configs")
-
-if __name__ == "__main__":
-    main()

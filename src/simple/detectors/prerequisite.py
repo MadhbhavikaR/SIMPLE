@@ -1,45 +1,15 @@
 #!/usr/bin/env python3
 
-import os
 import sys
-import subprocess
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass
+from typing import Dict, Any, Optional
 
 
 from simple.config.config_reader import ConfigReader
+from simple.detectors import Detector
+from simple.config.models.prereqquisite import PrereqConfig
 
-
-@dataclass
-class PrereqConfig:
-    """Prerequisite configuration structure."""
-    name: str
-    installed: bool
-    binary_path: Optional[str] = None
-    config_path: Optional[str] = None
-    service_path: Optional[str] = None
-    version: Optional[str] = None
-    install_cmd: Optional[str] = None
-    keyword: Optional[str] = None
-
-
-class Detector:
-    """Base detection class."""
-    
-    def __init__(self, config_reader: ConfigReader):
-        self.config_reader = config_reader
-    
-    def _find_paths(self, paths: List[str], is_binary: bool = False) -> Optional[str]:
-        """Find first existing path."""
-        validator = lambda p: p.exists() and (not is_binary or os.access(p, os.X_OK))
-        for path in paths:
-            if validator(Path(path)):
-                return str(path)
-        return None
-
-
-class PrerequisiteDetector(Detector):
+class PrerequisiteAppsDetector(Detector):
     """Detects prerequisites from single YAML config."""
     
     def __init__(self, config_reader: ConfigReader):
@@ -75,7 +45,7 @@ class PrerequisiteDetector(Detector):
         except FileNotFoundError:
             pass
         
-        # Detect privilege manager (pkexec > sudo)
+        # Detect privilege manager (pkexec preceeds sudo)
         for pkexec_path in ["/usr/bin/pkexec", "/bin/pkexec"]:
             if Path(pkexec_path).exists():
                 sys_info["priv_manager"] = "pkexec"
@@ -193,28 +163,3 @@ class PrerequisiteDetector(Detector):
             print(f"\n📦 COPY-PASTE ALL MISSING: {all_missing_cmd}")
         
         return ready_count == total
-
-
-def main():
-    """Silent detection, summary only."""
-    try:
-        config_reader = ConfigReader(Path("config"))
-        detector = PrerequisiteDetector(config_reader)
-        
-        detector.detect()  # Silent
-        all_ready = detector.print_summary()
-        
-        if all_ready:
-            print("\n🚀 System ready for deployment!")
-            sys.exit(0)
-        else:
-            print("\n⚠️  Install missing prerequisites using the command above.")
-            sys.exit(1)
-            
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()

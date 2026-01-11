@@ -1,7 +1,7 @@
 import unittest
 import json
 from pathlib import Path
-from simple.config.config_reader import ConfigReader, ConfigResult
+from simple.config.config_reader import ConfigReader, Configuration
 
 class TestConfigReader(unittest.TestCase):
     

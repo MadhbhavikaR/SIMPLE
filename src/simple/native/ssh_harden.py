@@ -46,14 +46,3 @@ class SSHEnforcer(SecurityEnforcerBase):
                         except ValueError:
                             continue
         return 22
-
-    def _has_active_ssh_session(self) -> bool:
-        try:
-            result = subprocess.run(['who'], capture_output=True, text=True, timeout=5)
-            if result.returncode == 0 and result.stdout.strip():
-                for line in result.stdout.splitlines():
-                    if 'pts' in line or 'tty' in line:
-                        return True
-        except Exception:
-            pass
-        return False

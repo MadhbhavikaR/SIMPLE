@@ -4,8 +4,10 @@ import subprocess
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 import yaml  # pyyaml required
+from simple.config import ConfigReader
 from simple.core.os_hardening import SecurityEnforcerBase
-from simple.config.config_reader import ConfigReader, ConfigResult
+from simple.config.models.configuration import Configuration
+
 
 TEMPLATES_DIR = Path(__file__).parent.parent.joinpath("templates", "native")
 UFW_TEMPLATE_NAME = "ufw"  # will resolve to templates/native/ufw.yaml or .yaml.jinja
@@ -35,7 +37,7 @@ class UfwEnforcer(SecurityEnforcerBase):
         }
 
         # Attempt to read/render template
-        result: ConfigResult = self.config_reader.read_template(UFW_TEMPLATE_NAME, vars_dict)
+        result: Configuration = self.config_reader.read_template(UFW_TEMPLATE_NAME, vars_dict)
         if result.success and result.data:
             try:
                 # result.data is the rendered YAML text
@@ -119,28 +121,6 @@ class UfwEnforcer(SecurityEnforcerBase):
                 return False
         return True
 
-    # internal helpers unchanged...
-    def _detect_ssh_port(self) -> int:
-        try:
-            result = subprocess.run(['ss', '-tlnp'], capture_output=True, text=True, timeout=5)
-            result.check_returncode()
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
-            return 22
-
-        for line in result.stdout.splitlines():
-            low = line.lower()
-            if 'ssh' in low or ':22 ' in line or line.strip().endswith(':22'):
-                parts = line.split()
-                if len(parts) >= 4:
-                    addr = parts[3]
-                    if addr.startswith('[') and ']' in addr:
-                        addr = addr.rsplit(']', 1)[-1]
-                    if ':' in addr:
-                        try:
-                            return int(addr.split(':')[-1])
-                        except ValueError:
-                            continue
-        return 22
 
     def _has_active_ssh_session(self) -> bool:
         try:

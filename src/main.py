@@ -3,10 +3,11 @@
 import sys
 import os
 from pathlib import Path
+from simple.detectors.prerequisite import PrerequisiteAppsDetector
+from simple.detectors.server_detector import ServerDetector
 from simple.native.apparmor_harden import AppArmorEnforcer
 from simple.native.ufw_harden import UfwEnforcer
 from simple.native.ssh_harden import SSHEnforcer
-from simple.prereq_detector import PrerequisiteDetector
 
 import questionary
 from simple.config import ConfigManager, ConfigReader
@@ -36,12 +37,16 @@ def main():
     
     config_reader = ConfigReader()
     print("🔍 Checking prerequisites...")
-    detector = PrerequisiteDetector(config_reader)
-    detector.detect()
+    apps_detector = PrerequisiteAppsDetector(config_reader)
+    apps_detector.detect()
+    apps_detector.print_summary()
+    server_detector = ServerDetector(config_reader)
+    results = server_detector.detect()
+    server_detector.print_summary()
     
-    if not detector.print_summary():
-        if not validation_only:
-            sys.exit(1)
+    # if not detector.print_summary():
+    #     if not validation_only:
+    #         sys.exit(1)
 
     if validation_only:
         # Validation-only mode

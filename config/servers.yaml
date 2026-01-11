@@ -1,0 +1,18 @@
+services:
+  ssh:
+    keywords: ["sshd", "openssh", "dropbear"]
+    default_port: 22
+  mysql:
+    keywords: ["mysqld", "mysql"]
+    default_port: 3306
+  postgres:
+    keywords: ["postgres", "postgresql"]
+    default_port: 5432
+  redis:
+    keywords: ["redis"]
+    default_port: 6379
+  nginx:
+    keywords: ["nginx", "httpd"]
+    default_ports: [80, 443]
+  docker:
+    keywords: ["dockerd"]

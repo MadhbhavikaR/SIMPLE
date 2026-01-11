@@ -1,6 +1,6 @@
 """Configuration management."""
 
-from .config import ConfigManager
-from .config_reader import ConfigReader, ConfigResult
+from .config_manager import ConfigManager
+from .config_reader import ConfigReader
 
-__all__ = ['ConfigManager', 'ConfigReader', 'ConfigResult']
+__all__ = ['ConfigManager', 'ConfigReader']

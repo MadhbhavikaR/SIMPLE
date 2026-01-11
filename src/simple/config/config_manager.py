@@ -202,28 +202,3 @@ class ConfigManager:
             alphabet += "!@#$%^&*()_+-=[]{}|;:,.<>?"
         
         return ''.join(secrets.choice(alphabet) for _ in range(length))
-    
-    def validate_password(self, password: str, min_length: int = 16) -> tuple:
-        """
-        Validate password strength.
-        
-        Args:
-            password: Password to validate
-            min_length: Minimum length requirement
-            
-        Returns:
-            Tuple of (is_valid, error_message)
-        """
-        if len(password) < min_length:
-            return False, f"Password must be at least {min_length} characters"
-        
-        if not any(c.isupper() for c in password):
-            return False, "Password must contain at least one uppercase letter"
-        
-        if not any(c.islower() for c in password):
-            return False, "Password must contain at least one lowercase letter"
-        
-        if not any(c.isdigit() for c in password):
-            return False, "Password must contain at least one digit"
-        
-        return True, ""
