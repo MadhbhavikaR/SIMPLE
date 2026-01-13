@@ -1,0 +1,11 @@
+name: Nextcloud
+description: "Secure self-hosted productivity platform (files, calendar, mail)"
+url: "https://nextcloud.com"
+version: "30.0.2"
+category: "storage"
+enforced: false
+docker_image: "linuxserver/nextcloud:30.0"
+dependencies: ["mariadb", "redis"]
+ports:
+  http: 8080
+alternatives: ["default"]

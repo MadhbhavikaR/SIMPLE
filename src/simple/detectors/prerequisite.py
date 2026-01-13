@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional
 
 from simple.config.config_reader import ConfigReader
 from simple.detectors import Detector
-from simple.config.models.prereqquisite import PrereqConfig
+from simple.config.dto.prereqquisite import PrereqConfig
 
 class PrerequisiteAppsDetector(Detector):
     """Detects prerequisites from single YAML config."""

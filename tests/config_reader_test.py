@@ -46,9 +46,12 @@ nested:
     
     def test_template_rendering(self):
         # Create test template
-        template_path = self.reader.template_dir / "test.yaml"
+        template_path = self.reader.template_dir / "test.yaml.jinja"
         template_path.write_text("Hello {{ name }}!")
-        
-        result = self.reader.read_template("test", {"name": "World"})
+
+        result = self.reader.read_template("test.yaml.jinja", {"name": "World"})
+        print(f"Result success: {result.success}")
+        print(f"Result error: {result.error}")
+        print(f"Result data: {result.data}")
         self.assertTrue(result.success)
         self.assertIn("Hello World!", result.data)

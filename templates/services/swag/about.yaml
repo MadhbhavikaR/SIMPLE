@@ -1,0 +1,12 @@
+name: SWAG
+description: "Nginx reverse proxy + Let's Encrypt SSL automation"
+url: "https://github.com/linuxserver/docker-swag"
+version: "6.7.0"
+category: "proxy"
+enforced: true
+docker_image: "linuxserver/swag:6.7.0"
+dependencies: ["cloudflared"]
+ports:
+  http: 80
+  https: 443
+alternatives: ["default"]

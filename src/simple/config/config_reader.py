@@ -13,12 +13,35 @@ import yaml
 import jinja2
 from pathlib import Path
 from typing import Dict, Any, Optional, List
+from enum import Enum
 
-from simple.config.models import Configuration
+from simple.config.dto.configuration import Configuration
 
 # Type aliases for clarity
 
 TemplateVars = Dict[str, Any]
+
+class TemplateType(Enum):
+    """
+    Enum for template types mapping to standardized paths.
+
+    This enum defines the different types of templates available in the system
+    and maps them to their corresponding directory paths under the templates folder.
+
+    Attributes:
+        NETWORK: Network configuration templates (templates/networks/)
+        SERVICE: Service configuration templates (templates/services/)
+        OVERRIDE: Service override templates (templates/services/<service>/overrides/)
+        PATCH: Service patch templates (templates/services/<service>/patches/)
+        NATIVE: Native system configuration templates (templates/native/)
+        DEFAULT: Default configuration templates (templates/default/)
+    """
+    NETWORK = "networks"
+    SERVICE = "services"
+    OVERRIDE = "overrides"
+    PATCH = "patches"
+    NATIVE = "native"
+    DEFAULT = "default"
 
 class ConfigReader:
     """Unified configuration reader with YAML→JSON and template rendering."""
@@ -50,7 +73,7 @@ class ConfigReader:
         Returns:
             Config with data or error
         """
-        config_path = self.config_dir / f"{config_name}.yaml"
+        config_path = self.config_dir / f"{config_name}.yaml" #FIXME: config_dir will not work with templates
         
         if not config_path.exists():
             return Configuration(
@@ -82,41 +105,85 @@ class ConfigReader:
                 path=config_path
             )
     
-    def read_template(self, template_name: str, vars_dict: TemplateVars, 
-                     output_path: Optional[Path] = None) -> Configuration:
+    def read_template(self, template_name: str, vars_dict: TemplateVars,
+                     output_path: Optional[Path] = None,
+                     template_type: Optional[TemplateType] = None) -> Configuration:
         """
         Render Jinja2 template with variables.
-        
+
         Args:
-            template_name: Template filename (e.g., 'docker-compose.yaml' or 'services/nextcloud/nextcloud.yaml')
+            template_name: Template filename (e.g., 'docker-compose.yaml' or 'nextcloud.yaml')
                           Can include or exclude .jinja extension
             vars_dict: Variables to substitute {{ var_name }}
             output_path: Optional output file path
-            
+            template_type: Optional template type enum to specify standardized path
+                          (e.g., TemplateType.SERVICE for templates/services/)
+
         Returns:
             Config with rendered content
         """
-        # Try different template name variations
-        template_variants = [
-            f"{template_name}.jinja",  # services/nextcloud/nextcloud.yaml.jinja
-            f"{template_name}",  # services/nextcloud/nextcloud.yaml (if .jinja is already in name)
-            template_name.replace('.yaml', '.yaml.jinja'),  # Convert .yaml to .yaml.jinja
-        ]
-        
-        template_path = None
-        # template_name_to_load = None
-        
-        for variant in template_variants:
-            test_path = self.template_dir / variant
-            if test_path.exists():
-                template_path = test_path
-                # template_name_to_load = variant
-                break
+        # Build template path based on template type if provided
+        if template_type:
+            """
+            Template type-based path resolution:
+            - Uses standardized directory structure for different template types
+            - Provides consistent and predictable template locations
+            - Supports dynamic configuration framework
+            """
+            # Map template type to standardized path
+            type_path = template_type.value
+
+            # For service overrides and patches, we need to handle the service name
+            # These templates are organized as: templates/services/<service>/<type>/<filename>
+            if template_type in [TemplateType.OVERRIDE, TemplateType.PATCH]:
+                # Extract service name from template_name if it's in format service/filename
+                if '/' in template_name:
+                    service_name, filename = template_name.split('/', 1)
+                    template_path = self.template_dir / TemplateType.SERVICE.value / service_name / type_path / filename
+                else:
+                    # If no service specified, this is likely an error
+                    return Configuration(
+                        success=False,
+                        error=f"For {template_type.name} templates, template_name should include service name (e.g., 'nextcloud/compose.yaml')",
+                        path=None
+                    )
+            else:
+                # For other types, use the type path directly
+                # Constructs path like: templates/<type_path>/<template_name>
+                template_path = self.template_dir / type_path / template_name
+        else:
+            """
+            Legacy path resolution (backward compatibility):
+            - Tries multiple variations of template names
+            - Supports both .jinja and non-.jinja extensions
+            - Maintains compatibility with existing code
+            """
+            # Original behavior: try different template name variations
+            template_variants = [
+                f"{template_name}.jinja",  # services/nextcloud/nextcloud.yaml.jinja
+                f"{template_name}",  # services/nextcloud/nextcloud.yaml (if .jinja is already in name)
+                template_name.replace('.yaml', '.yaml.jinja'),  # Convert .yaml to .yaml.jinja
+            ]
+
+            template_path = None
+
+            for variant in template_variants:
+                test_path = self.template_dir / variant
+                if test_path.exists():
+                    template_path = test_path
+                    break
         
         if not template_path or not template_path.exists():
+            if template_type:
+                # For template type paths, show the specific path that was tried
+                error_msg = f"Template not found: {template_path}"
+            else:
+                # For original behavior, show all variants that were tried
+                error_msg = f"Template not found. Tried: {', '.join([str(self.template_dir / v) for v in template_variants])}"
+
             return Configuration(
                 success=False,
-                error=f"Template not found. Tried: {', '.join([str(self.template_dir / v) for v in template_variants])}",
+                error=error_msg,
                 path=None
             )
         

@@ -55,14 +55,24 @@ class ServiceStrategy(ABC):
         # Add dependencies to context (templates can use them if needed)
         if dependencies:
             template_context['DEPENDENCIES'] = dependencies
-        
-        template_path = f"services/{self.name}/{self.name}.yaml"
+
+        # Load the lsio-defaults template first to make it available for YAML anchors
+        lsio_defaults_result = self.config_reader.read_template("x-lsio-defaults.yaml", template_context)
+        if lsio_defaults_result.success:
+            # Add the lsio-defaults content to the context so it's available for YAML anchors
+            template_context['lsio_defaults'] = lsio_defaults_result.data
+
+        template_path = f"services/{self.name}/default.yaml"
         result = self.config_reader.read_template(template_path, template_context)
-        
-        if not result.success:
+
+        # Combine the lsio-defaults with the service YAML to resolve YAML anchors
+        if lsio_defaults_result.success and result.success:
+            combined_yaml = f"{lsio_defaults_result.data}\n{result.data}"
+            return combined_yaml
+        elif result.success:
+            return result.data
+        else:
             raise ValueError(f"Failed to load template for {self.name}: {result.error}")
-        
-        return result.data
     
     @abstractmethod
     def get_volume_paths(self, context: Dict[str, Any]) -> List[Path]:

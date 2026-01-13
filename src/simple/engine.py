@@ -73,32 +73,90 @@ class DockerEngine:
     def _get_service_secrets(self, service_name: str) -> List[str]:
         """
         Get list of secret names used by a service.
-        
+
         Args:
             service_name: Name of the service
-            
+
         Returns:
             List of secret names
         """
-        # Map service names to their required secrets
-        service_secret_map = {
-            'cloudflared': ['CF_DOCKER_TOKEN'],
-            'mariadb': ['MARIADB_ROOT_PASSPHRASE'],
-            'photoprism': ['PHOTOPRISM_ADMIN_PASSWORD'],
-            'authelia': ['AUTHELIA_JWT_SECRET', 'AUTHELIA_SESSION_SECRET', 'AUTHELIA_STORAGE_PASSWORD'],
-            'crowdsec': ['CROWDSEC_API_KEY'],
-            'swag': ['CROWDSEC_API_KEY'],  # Only if crowdsec is selected (handled by template)
-        }
-        
-        secrets = service_secret_map.get(service_name, [])
-        
+        # Load about.yaml data to get secrets dynamically
+        about_data = self._load_service_about_data(service_name)
+        prompts = about_data.get('prompts', [])
+
+        # Extract secret names from prompts where type is PASSWORD or SECRET
+        secrets = []
+        for prompt in prompts:
+            prompt_type_str = prompt.get('type', {}).get('enum', ['STRING'])[0]
+            if prompt_type_str in ['PASSWORD', 'SECRET']:
+                secrets.append(prompt['name'])
+
         # Filter out secrets that don't exist in self.secrets
         return [s for s in secrets if s in self.secrets]
     
+    def _load_service_about_data(self, service_name: str) -> Dict[str, Any]:
+        """
+        Load about.yaml data for a service.
+
+        Args:
+            service_name: Name of the service
+
+        Returns:
+            Dictionary containing service metadata from about.yaml
+        """
+        from simple.config.config_reader import ConfigReader
+        config_reader = ConfigReader()
+
+        about_path = config_reader.template_dir / 'services' / service_name / 'about.yaml'
+        if about_path.exists():
+            with open(about_path, 'r', encoding='utf-8') as f:
+                return yaml.safe_load(f)
+        return {}
+
+    def _get_prompt_input(self, prompt_data: Dict[str, Any]) -> str:
+        """
+        Get user input based on prompt type and validation rules.
+
+        Args:
+            prompt_data: Dictionary containing prompt configuration
+
+        Returns:
+            User input value
+        """
+        from .core.prompt import PromptType
+
+        prompt_name = prompt_data.get('name', '')
+        description = prompt_data.get('description', '')
+        prompt_type_str = prompt_data.get('type', {}).get('enum', ['STRING'])[0]
+        required = prompt_data.get('required', False)
+
+        # Convert string to enum
+        try:
+            prompt_type = PromptType[prompt_type_str]
+        except KeyError:
+            raise ValueError(f"Invalid prompt type '{prompt_type_str}' in about.yaml. Valid types: {[e.name for e in PromptType]}")
+
+        # Use enum-based logic
+        if prompt_type == PromptType.PASSWORD or prompt_type == PromptType.SECRET:
+            return questionary.password(f"[{prompt_name}] {description}:").ask()
+        elif prompt_type == PromptType.STRING:
+            return questionary.text(f"[{prompt_name}] {description}:").ask()
+        elif prompt_type == PromptType.NUMBER:
+            return questionary.text(f"[{prompt_name}] {description}:", validate=lambda x: x.isdigit() or "Please enter a valid number").ask()
+        elif prompt_type == PromptType.EMAIL:
+            return questionary.text(f"[{prompt_name}] {description}:", validate=lambda x: '@' in x and '.' in x or "Please enter a valid email").ask()
+        elif prompt_type == PromptType.DOMAIN:
+            return questionary.text(f"[{prompt_name}] {description}:", validate=lambda x: '.' in x and not x.startswith('.') and not x.endswith('.') or "Please enter a valid domain").ask()
+        elif prompt_type == PromptType.PATH:
+            return questionary.path(f"[{prompt_name}] {description}:").ask()
+        else:
+            # Default to text input
+            return questionary.text(f"[{prompt_name}] {description}:").ask()
+
     def select_services(self, allow_incremental: bool = True) -> None:
         """
-        Interactive service selection.
-        
+        Interactive service selection with detailed information from about.yaml files.
+
         Args:
             allow_incremental: If True, load existing services and allow adding new ones
         """
@@ -108,34 +166,70 @@ class DockerEngine:
             existing_compose = self._load_existing_compose()
             if existing_compose:
                 print("🔄 Regeneration mode: Found existing services")
-        
         # Load dependencies
         self._load_dependencies()
-        
         print("\n🎛️  SERVICE SELECTION")
         print("-" * 50)
-        
+
+        # Group services by category for better organization
+        services_by_category = {}
         for service in AVAILABLE_SERVICES:
-            if service.category == "core":
-                self.selected_services.append(service)
-                print(f"✅ {service.name} (CORE - auto-enabled)")
-                continue
-            
-            # Check if service already exists
-            is_existing = service.name in self.existing_services
-            default_value = is_existing
-            
-            choice = questionary.checkbox(
-                f"Enable {service.name}" + (" (already configured)" if is_existing else ""),
-                choices=["enabled"],
-                qmark="?",
-                default=default_value
-            ).ask()
-            
-            if choice:
-                if service not in self.selected_services:
+            category = service.category
+            if category not in services_by_category:
+                services_by_category[category] = []
+            services_by_category[category].append(service)
+
+        # Process services by category
+        for category, services in services_by_category.items():
+            print(f"\n📋 {category.upper()} SERVICES")
+            print("=" * 40)
+
+            for service in services:
+                # Load about.yaml data for this service
+                about_data = self._load_service_about_data(service.name)
+                service_name = about_data.get('name', service.name)
+                description = about_data.get('description', 'No description available')
+                enforced = about_data.get('enforced', False)
+
+                # Check if service already exists
+                is_existing = service.name in self.existing_services
+
+                if category == "core" or enforced:
                     self.selected_services.append(service)
-                    self._collect_secrets(service)
+                    print(f"✅ {service_name} (AUTO-ENABLED)")
+                    if description:
+                        print(f"     {description}")
+                    continue
+
+                # Show service information
+                print(f"\n📦 {service_name}")
+                print(f"     {description}")
+
+                # Ask user if they want to enable this service
+                default_value = is_existing
+                choice = questionary.confirm(
+                    f"Enable {service_name}?" + (" (already configured)" if is_existing else ""),
+                    default=default_value,
+                    qmark="?"
+                ).ask()
+
+                if choice:
+                    if service not in self.selected_services:
+                        self.selected_services.append(service)
+
+                        # Collect any required prompts from about.yaml
+                        prompts = about_data.get('prompts', [])
+                        for prompt in prompts:
+                            prompt_value = self._get_prompt_input(prompt)
+                            # Store prompt values in secrets or context as appropriate
+                            prompt_type_str = prompt.get('type', {}).get('enum', ['STRING'])[0]
+                            if prompt_type_str in ['PASSWORD', 'SECRET']:
+                                self.secrets[prompt['name']] = prompt_value
+                            else:
+                                self.context[prompt['name']] = prompt_value
+
+                        # Collect any additional secrets not covered by prompts
+                        self._collect_secrets(service)
     
     def _collect_secrets(self, service: ServiceStrategy) -> None:
         """Securely collect service secrets."""
@@ -252,16 +346,17 @@ class DockerEngine:
         config_reader = ConfigReader()
         
         # Load network template
-        networks_result = config_reader.read_template('networks', self.context)
+        from simple.config.config_reader import TemplateType
+        networks_result = config_reader.read_template('networks.yaml.jinja', self.context, template_type=TemplateType.NETWORK)
         if not networks_result.success:
             raise ValueError(f"Failed to load networks template: {networks_result.error}")
-        
+
         # Load defaults templates
-        vault_defaults_result = config_reader.read_template('x-vault-app-defaults', self.context)
+        vault_defaults_result = config_reader.read_template('x-vault-app-defaults.yaml.jinja', self.context)
         if not vault_defaults_result.success:
             raise ValueError(f"Failed to load vault-app-defaults template: {vault_defaults_result.error}")
-        
-        lsio_defaults_result = config_reader.read_template('x-lsio-defaults', self.context)
+
+        lsio_defaults_result = config_reader.read_template('x-lsio-defaults.yaml.jinja', self.context)
         if not lsio_defaults_result.success:
             raise ValueError(f"Failed to load lsio-defaults template: {lsio_defaults_result.error}")
         
@@ -330,7 +425,7 @@ class DockerEngine:
                         elif 'depends_on' in svc_config:
                             # Remove depends_on if no dependencies are selected
                             del svc_config['depends_on']
-                        
+
                         # Add Docker secrets to service if it uses any
                         service_secrets = self._get_service_secrets(service.name)
                         if service_secrets:
@@ -343,7 +438,13 @@ class DockerEngine:
                                         'source': secret_name,
                                         'target': secret_name
                                     })
-                        
+
+                        # Add network assignments from about.yaml
+                        about_data = self._load_service_about_data(service.name)
+                        networks_enum = about_data.get('networks', {}).get('enum', [])
+                        if networks_enum:
+                            svc_config['networks'] = networks_enum
+
                         # Check for direct docker.sock mounts
                         volumes = svc_config.get('volumes', [])
                         for vol in volumes:

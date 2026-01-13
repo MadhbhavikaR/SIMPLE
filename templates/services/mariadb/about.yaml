@@ -1,0 +1,22 @@
+name: MariaDB
+description: "Open-source relational database management system"
+url: "https://mariadb.org"
+version: "11.4.2"
+category:
+  enum: "database"
+networks:
+  enum:
+    - DATABASES
+prompts:
+  - name: MARIADB_ROOT_PASSPHRASE
+    description: The root password for MariaDB
+    type:
+      enum:
+        - SECRET
+    required: true
+enforced: false
+docker_image: "linuxserver/mariadb:11.4.2"
+dependencies: []
+ports:
+  http: 3306
+alternatives: ["default"]

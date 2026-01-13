@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Any
 
 
 from simple.config.config_reader import ConfigReader
-from simple.config.models.servers import ServerDetectionResult
+from simple.config.dto.servers import ServerDetectionResult
 from simple.detectors.detector import Detector
 
 

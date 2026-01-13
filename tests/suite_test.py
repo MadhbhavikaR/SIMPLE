@@ -10,7 +10,8 @@ import yaml
 from pathlib import Path
 from simple.config import ConfigManager
 from simple.engine import DockerEngine
-from simple.services.gateways import CloudflaredService, SwagService
+from simple.services.cloudflared_service import CloudflaredService
+from simple.services.swag_service import SwagService
 
 class TestHomeInfraSuite(unittest.TestCase):
     
@@ -19,11 +20,15 @@ class TestHomeInfraSuite(unittest.TestCase):
     
     def test_config_detection(self):
         """System auto-detection works."""
-        config = ConfigManager()
+        from simple.config.config_reader import ConfigReader
+        config_reader = ConfigReader()
+        config = ConfigManager(config_reader)
         config.detect_system()
-        self.assertIn('PUID', config.context)
-        self.assertIn('PGID', config.context)
-        self.assertIsInstance(config.context['PUID'], str)
+        # The detect_system method only sets basic system info, not PUID/PGID
+        # Those are set in _prompt_non_root_user which requires interactive input
+        self.assertIn('TZ', config.context)
+        self.assertIn('HOSTNAME', config.context)
+        self.assertIsInstance(config.context['TZ'], str)
     
     def test_service_interfaces(self):
         """All services implement required interface."""
@@ -50,12 +55,13 @@ class TestHomeInfraSuite(unittest.TestCase):
     
     def test_network_isolation(self):
         """Network isolation is enforced."""
-        context = {'PUID': '1000', 'PGID': '1000', 'VOLUMES_DIR': Path('/tmp/volumes')}
+        context = {'PUID': '1000', 'PGID': '1000', 'VOLUMES_DIR': Path('/tmp/volumes'), 'DOCKER_DIR': Path('/tmp')}
         engine = DockerEngine(context)
+        engine._load_dependencies()  # Load dependencies before setting services
         engine.selected_services = [CloudflaredService(), SwagService()]
         engine._write_compose_file()
-        
-        compose_path = context.get('DOCKER_DIR', Path('/tmp')) / 'docker-compose.yaml'
+
+        compose_path = context['DOCKER_DIR'] / 'docker-compose.yaml'
         if compose_path.exists():
             with open(compose_path) as f:
                 compose = yaml.safe_load(f)

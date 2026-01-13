@@ -1,0 +1,22 @@
+name: PhotoPrism
+description: "AI-powered photos app for the decentralized web"
+url: "https://photoprism.app"
+version: "240420"
+category:
+  enum: "media"
+networks:
+  enum:
+    - APPLICATIONS
+prompts:
+  - name: PHOTOPRISM_ADMIN_PASSWORD
+    description: The admin password for PhotoPrism
+    type:
+      enum:
+        - SECRET
+    required: true
+enforced: false
+docker_image: "photoprism/photoprism:240420"
+dependencies: []
+ports:
+  http: 2342
+alternatives: ["default"]

@@ -1,0 +1,22 @@
+name: CrowdSec
+description: "Open-source security automation platform"
+url: "https://www.crowdsec.net"
+version: "1.6.0"
+category:
+  enum: "security"
+networks:
+  enum:
+    - APPLICATIONS
+prompts:
+  - name: CROWDSEC_API_KEY
+    description: The API key for CrowdSec
+    type:
+      enum:
+        - SECRET
+    required: true
+enforced: false
+docker_image: "crowdsecurity/crowdsec:1.6.0"
+dependencies: []
+ports:
+  http: 8080
+alternatives: ["default"]

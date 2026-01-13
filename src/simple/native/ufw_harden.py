@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml  # pyyaml required
 from simple.config import ConfigReader
 from simple.core.os_hardening import SecurityEnforcerBase
-from simple.config.models.configuration import Configuration
+from simple.config.dto.configuration import Configuration
 
 
 TEMPLATES_DIR = Path(__file__).parent.parent.joinpath("templates", "native")

@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from abc import ABC, abstractmethod
 
 from simple.config.config_reader import ConfigReader
-from simple.config.models import PrereqConfig
+from simple.config.dto import PrereqConfig
 
 class Detector:
     """Base detection class."""

@@ -1,0 +1,22 @@
+name: Cloudflared
+description: "Cloudflare Tunnel daemon"
+url: "https://www.cloudflare.com/products/tunnel/"
+version: "2024.8.1"
+category:
+  enum: "network"
+networks:
+  enum:
+    - APPLICATIONS
+prompts:
+  - name: CF_DOCKER_TOKEN
+    description: The Docker token for Cloudflared
+    type:
+      enum:
+        - SECRET
+    required: true
+enforced: false
+docker_image: "cloudflare/cloudflared:2024.8.1"
+dependencies: []
+ports:
+  http: 8080
+alternatives: ["default"]

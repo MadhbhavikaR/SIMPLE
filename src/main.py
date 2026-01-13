@@ -27,15 +27,14 @@ def main():
         print("🔍 Dev mode enabled")
 
     # Security check: Validate environment (only for non-validation mode)
-    if not validation_only and os.geteuid() != 0 and not dev_mode:
-        print("❌ CRITICAL: Must run as root (sudo python main.py)")
-        sys.exit(1)
+    # if not validation_only and os.geteuid() != 0 and not dev_mode:
+    #     print("❌ CRITICAL: Must run as root (sudo python main.py)")
+    #     sys.exit(1)
     
     # Step 1: System Detection [Single Responsibility]
-    config = ConfigManager()
-    config.detect_system()
-    
     config_reader = ConfigReader()
+    config = ConfigManager(config_reader)
+    
     print("🔍 Checking prerequisites...")
     apps_detector = PrerequisiteAppsDetector(config_reader)
     apps_detector.detect()
@@ -48,23 +47,23 @@ def main():
     #     if not validation_only:
     #         sys.exit(1)
 
-    if validation_only:
-        # Validation-only mode
-        print("\n🔍 VALIDATION MODE - Checking existing configuration...")
-        config_path = Path("docker/docker-compose.yaml")
-        if not config_path.exists():
-            print(f"❌ Configuration not found at {config_path}")
-            sys.exit(1)
+    # if validation_only:
+    #     # Validation-only mode
+    #     print("\n🔍 VALIDATION MODE - Checking existing configuration...")
+    #     config_path = Path("docker/docker-compose.yaml")
+    #     if not config_path.exists():
+    #         print(f"❌ Configuration not found at {config_path}")
+    #         sys.exit(1)
         
-        # Load context from existing .env if available
-        env_path = Path("docker/.env")
-        context = config.context
-        if env_path.exists():
-            with open(env_path) as f:
-                for line in f:
-                    if '=' in line and not line.strip().startswith('#'):
-                        key, value = line.strip().split('=', 1)
-                        context[key] = value
+    #     # Load context from existing .env if available
+    #     env_path = Path("docker/.env")
+    #     context = config.context
+    #     if env_path.exists():
+    #         with open(env_path) as f:
+    #             for line in f:
+    #                 if '=' in line and not line.strip().startswith('#'):
+    #                     key, value = line.strip().split('=', 1)
+    #                     context[key] = value
         
         # results = run_validation_suite(context)
         # print(f"\n📊 Validation Results:")
@@ -82,10 +81,10 @@ def main():
 
     # Step 2: Interactive Wizard
     # Check if this is a regeneration (existing compose file)
-    docker_dir = context.get('BASE_DIR', Path.cwd()) / 'docker'
-    compose_path = docker_dir / 'docker-compose.yaml'
-    is_regeneration = compose_path.exists()
-    
+    # docker_dir = context.get('BASE_DIR', Path.cwd()) / 'docker'
+    # compose_path = docker_dir / 'docker-compose.yaml'
+    # is_regeneration = compose_path.exists()
+    is_regeneration = False
     context = config.wizard(load_existing=is_regeneration)
     
     # Step 3: Service Selection

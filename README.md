@@ -28,3 +28,10 @@ PrerequisiteDetector replace with which command may be, how do i get the install
 1. Add support for custom files overrides/<path>/file.<ext>.jinja and rename <service>.yaml.jinja -> service.yaml.jinja 
 2.use the detected os to have customization to move out of diet pi
 3.add custome notifications like telegram, as service
+
+support enums in yaml, check about in authelia
+support service validation in about
+create a yaml schema if possible
+create dynamic prompts with validations
+provide option to select variations
+move away from hardcoded strategy

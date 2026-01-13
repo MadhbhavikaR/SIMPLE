@@ -1,0 +1,37 @@
+name: Authelia
+description: "Open-source high-performance authentication & authorization server"
+url: "https://www.authelia.com"
+version: "4.38.8"
+category: 
+  enum: "auth"
+networks: 
+  enum: 
+    - APPLICATIONS
+prompts:
+  - name: AUTHELIA_JWT_SECRET
+    description: The JWT Secret to be used
+    type:
+      enum:
+        - SECRET
+    required: true
+  - name: AUTHELIA_SESSION_SECRET
+    description: The session secret to be used
+    type:
+      enum:
+        - SECRET
+    required: true
+  - name: AUTHELIA_STORAGE_PASSWORD
+    description: The storage password to be used
+    type:
+      enum:
+        - SECRET
+    required: true
+enforced: true
+docker_image: "authelia/authelia:4.38.8"
+dependencies: 
+  services: 
+    - "redis"
+    - "mariadb"
+ports:
+  http: 9091
+alternatives: ["default"]
