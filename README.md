@@ -1,11 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" width="180" />
-</p>
-
-<h1 align="center">SIMPLE</h1>
-
-<p align="center">
-  <strong>Self-hosted Infrastructure Made Painless</strong>
+  <img src="docs/assets/logo.png" width="300" />
 </p>
 
 <p align="center">
@@ -18,6 +12,12 @@
   <img src="https://img.shields.io/github/issues/MadhbhavikaR/SIMPLE" />
   <img src="https://img.shields.io/github/actions/workflow/status/MadhbhavikaR/SIMPLE/ci.yml" />
 </p>
+
+---
+
+<h1 align="center">
+  WORK IN PROGRESS
+</h1>
 
 ---
 
@@ -74,11 +74,6 @@ chmod +x scripts/setup.sh
 source activate
 sudo python src/main.py
 
-# 3. Deploy
-cd docker
-docker compose up -d
-
-# 4. Validate
 python -m pytest tests/ -v
 ```
 
