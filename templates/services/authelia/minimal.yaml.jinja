@@ -1,0 +1,21 @@
+  authelia:
+    image: authelia/authelia:latest
+    container_name: authelia
+    hostname: authelia
+    <<: *vault-app-defaults
+    networks:
+      - app
+    environment:
+      - TZ=${TZ}
+      - AUTHELIA_JWT_SECRET_FILE=/run/secrets/AUTHELIA_JWT_SECRET
+      - AUTHELIA_SESSION_SECRET_FILE=/run/secrets/AUTHELIA_SESSION_SECRET
+      - AUTHELIA_STORAGE_PASSWORD_FILE=/run/secrets/AUTHELIA_STORAGE_PASSWORD
+      - AUTHELIA_STORAGE_LOCAL_PATH=/config/db.sqlite3
+      - AUTHELIA_NOTIFICATIONS_DISABLE_REQUIRE_STARTUP_CHECK=true
+    volumes:
+      - ${VOLUMES_DIR}/authelia:/config:rw
+    command: 
+      - --config
+      - /config/configuration.yml
+      - --storage.local.path
+      - /config/db.sqlite3

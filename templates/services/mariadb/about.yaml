@@ -19,4 +19,6 @@ docker_image: "linuxserver/mariadb:11.4.2"
 dependencies: []
 ports:
   http: 3306
-alternatives: ["default"]
+alternatives:
+  - name: default
+    description: "Standard MariaDB configuration"

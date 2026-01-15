@@ -1,4 +1,21 @@
 #!/usr/bin/env python3
+"""
+S.I.M.P.L.E (Self-hosted Infrastructure Made Painless)
+
+Main entry point for the S.I.M.P.L.E infrastructure automation tool.
+
+This module orchestrates the complete self-hosted infrastructure setup process,
+including system detection, service selection, Docker Compose generation,
+security hardening, and notifications.
+
+Features:
+- Interactive wizard for infrastructure configuration
+- Service selection with dependency resolution
+- Docker Compose infrastructure generation
+- Security hardening (UFW, AppArmor, SSH)
+- Validation and sanity checking
+- Notification system
+"""
 
 import sys
 import os
@@ -14,11 +31,32 @@ from simple.config import ConfigManager, ConfigReader
 from simple.engine import DockerEngine
 
 from simple.notifier import Notifier
+from simple.services.sanity_checks import SanityCheckRunner, AlternativesSanityCheck
 # from tests.suite_test import run_validation_suite
 
 def main():
+    """
+    Main execution function for S.I.M.P.L.E infrastructure automation.
+
+    Orchestrates the complete workflow:
+    1. System detection and sanity checks
+    2. Interactive configuration wizard
+    3. Service selection with dependency resolution
+    4. Docker Compose infrastructure generation
+    5. Security hardening (optional)
+    6. Notifications
+
+    Returns:
+        bool: True if execution completed successfully, False otherwise
+
+    Raises:
+        SystemExit: On critical errors or when user aborts
+        Exception: For unexpected errors during execution
+    """
     
-    print("🚀 === S.I.M.P.L.E (Self-hosted Infrastructure Made Painless with Linux & Engineering) ===\n")
+    print("🚀 === S.I.M.P.L.E (Self-hosted Infrastructure Made Painless) ===\n")
+    
+    
     # Parse command line arguments
     validation_only = '--validate' in sys.argv or '-v' in sys.argv
     dev_mode = '--dev' in sys.argv or '-d' in sys.argv
@@ -34,7 +72,22 @@ def main():
     # Step 1: System Detection [Single Responsibility]
     config_reader = ConfigReader()
     config = ConfigManager(config_reader)
+    runner = SanityCheckRunner()
     
+    # Add core sanity checks
+    runner.add_check(AlternativesSanityCheck())
+    
+    # Add more checks here as needed
+    # runner.add_check(SomeOtherSanityCheck())
+    # runner.add_check(AnotherSanityCheck())
+    
+    success, results = runner.run_all_checks()
+    
+    if not success:
+        print("❌ Sanity checks failed. Please fix the issues above and restart.")
+        return False
+    
+    print("✅ All sanity checks passed!")
     print("🔍 Checking prerequisites...")
     apps_detector = PrerequisiteAppsDetector(config_reader)
     apps_detector.detect()

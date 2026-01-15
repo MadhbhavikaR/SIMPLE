@@ -57,7 +57,7 @@ class ServiceStrategy(ABC):
             template_context['DEPENDENCIES'] = dependencies
 
         # Load the lsio-defaults template first to make it available for YAML anchors
-        lsio_defaults_result = self.config_reader.read_template("x-lsio-defaults.yaml", template_context)
+        lsio_defaults_result = self.config_reader.read_template("anchors/x-lsio-defaults.yaml", template_context)
         if lsio_defaults_result.success:
             # Add the lsio-defaults content to the context so it's available for YAML anchors
             template_context['lsio_defaults'] = lsio_defaults_result.data

@@ -12,5 +12,10 @@ wheels/
 .idea
 .vscode
 .DS_Store
-.clinerules/
 .coverage
+
+.memory/
+.clinerules/
+.cline/
+.github/
+.pytest_cache/

@@ -26,7 +26,7 @@ prompts:
       enum:
         - SECRET
     required: true
-enforced: true
+enforced: false
 docker_image: "authelia/authelia:4.38.8"
 dependencies: 
   services: 
@@ -34,4 +34,8 @@ dependencies:
     - "mariadb"
 ports:
   http: 9091
-alternatives: ["default"]
+alternatives:
+  - name: default
+    description: "Standard Authelia configuration with Redis and MariaDB"
+  - name: minimal
+    description: "Lightweight Authelia without database dependencies"

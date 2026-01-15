@@ -2,10 +2,16 @@ name: Socket-Proxy
 description: "WebSocket to TCP/UDP proxy for real-time service bridging"
 url: "https://github.com/techblog/socket-proxy"
 version: "0.4.4"
-category: "proxy"
-enforced: false
+category:
+  enum: "proxy"
+enforced: true
 docker_image: "ghcr.io/techblog/socket-proxy:0.4.4"
 dependencies: []
 ports:
   http: 8082
-alternatives: ["default"]
+networks:
+  enum:
+    - APPLICATIONS
+alternatives:
+  - name: default
+    description: "Standard Socket Proxy configuration"

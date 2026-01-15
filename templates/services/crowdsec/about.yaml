@@ -19,4 +19,6 @@ docker_image: "crowdsecurity/crowdsec:1.6.0"
 dependencies: []
 ports:
   http: 8080
-alternatives: ["default"]
+alternatives:
+  - name: default
+    description: "Standard CrowdSec configuration"

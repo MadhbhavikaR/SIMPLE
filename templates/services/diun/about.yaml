@@ -2,10 +2,16 @@ name: Diun
 description: "Docker image update notifier & vulnerability scanner"
 url: "https://crazymax.dev/diun"
 version: "5.12.0"
-category: "monitoring"
+category:
+  enum: "monitoring"
 enforced: false
 docker_image: "crazymax/diun:5.12"
 dependencies: []
 ports:
   http: 8081
-alternatives: ["default"]
+networks:
+  enum:
+    - APPLICATIONS
+alternatives:
+  - name: default
+    description: "Standard Diun configuration"

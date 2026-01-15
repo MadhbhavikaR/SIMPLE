@@ -65,44 +65,49 @@ class ConfigReader:
     def read_yaml_config(self, config_name: str, as_json: bool = False) -> Configuration:
         """
         Read YAML config by name and return as dict or JSON string.
-        
+
         Args:
             config_name: Filename (e.g., 'prerequisites.yaml', 'app-settings')
             as_json: Return JSON string instead of Python dict
-            
+
         Returns:
             Config with data or error
         """
-        config_path = self.config_dir / f"{config_name}.yaml" #FIXME: config_dir will not work with templates
-        
-        if not config_path.exists():
+        # First try the new location in templates/framework
+        framework_path = self.template_dir / "framework" / f"{config_name}.yaml"
+        config_path = self.config_dir / f"{config_name}.yaml"  # Fallback to old location
+
+        # Use the framework path if it exists, otherwise fall back to config_dir
+        final_path = framework_path if framework_path.exists() else config_path
+
+        if not final_path.exists():
             return Configuration(
-                success=False, 
-                error=f"Config not found: {config_path}",
-                path=config_path
+                success=False,
+                error=f"Config not found: {final_path}",
+                path=final_path
             )
-        
+
         try:
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(final_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
-            
+
             if as_json:
                 json_str = json.dumps(data, indent=2, sort_keys=False)
-                return Configuration(success=True, data=json_str, path=config_path)
-            
-            return Configuration(success=True, data=data, path=config_path)
-            
+                return Configuration(success=True, data=json_str, path=final_path)
+
+            return Configuration(success=True, data=data, path=final_path)
+
         except yaml.YAMLError as e:
             return Configuration(
                 success=False,
                 error=f"YAML parsing error: {str(e)}",
-                path=config_path
+                path=final_path
             )
         except Exception as e:
             return Configuration(
                 success=False,
                 error=f"Read error: {str(e)}",
-                path=config_path
+                path=final_path
             )
     
     def read_template(self, template_name: str, vars_dict: TemplateVars,

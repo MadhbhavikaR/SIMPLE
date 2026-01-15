@@ -1,9 +1,19 @@
+#!/usr/bin/env python3
+"""
+Service Discovery and Management
+================================
+
+This module handles dynamic service discovery and provides access to all available services.
+"""
+
 import importlib
 import pkgutil
 from pathlib import Path
 from typing import List, Type, Dict
 
 from simple.core.container import ServiceStrategy
+from simple.services.unified_service import UnifiedServiceStrategy
+from simple.config.config_reader import ConfigReader
 
 PACKAGE_PATH = Path(__file__).parent
 
@@ -44,15 +54,77 @@ def _discover_service_classes() -> List[Type[ServiceStrategy]]:
 
     return services
 
+def _discover_unified_services() -> List[ServiceStrategy]:
+    """
+    Discover services using the new unified approach from about.yaml files.
+    
+    This method scans the templates/services directory for about.yaml files
+    and creates UnifiedServiceStrategy instances for each valid service.
+    """
+    config_reader = ConfigReader()
+    services_dir = config_reader.template_dir / "services"
+    
+    if not services_dir.exists():
+        return []
+    
+    unified_services = []
+    
+    for service_dir in services_dir.iterdir():
+        if not service_dir.is_dir():
+            continue
+        
+        about_file = service_dir / "about.yaml"
+        if not about_file.exists():
+            continue
+        
+        # Load the about.yaml file
+        try:
+            about_data = {}
+            with open(about_file, 'r', encoding='utf-8') as f:
+                import yaml
+                about_data = yaml.safe_load(f)
+            
+            if about_data:
+                # Create unified service instance
+                service_instance = UnifiedServiceStrategy(
+                    service_name=service_dir.name,
+                    about_data=about_data,
+                    config_reader=config_reader
+                )
+                unified_services.append(service_instance)
+        
+        except Exception as e:
+            print(f"⚠️  Failed to load service {service_dir.name}: {e}")
+            continue
+    
+    return unified_services
 
-# Instantiate all discovered services
-AVAILABLE_SERVICES = [
-    service_cls()
-    for service_cls in _discover_service_classes()
-]
+def get_available_services() -> List[ServiceStrategy]:
+    """
+    Get all available services, preferring the unified approach.
+    
+    Returns:
+        List of ServiceStrategy instances
+    """
+    # Try unified approach first
+    unified_services = _discover_unified_services()
+    
+    if unified_services:
+        # If we found unified services, use them exclusively
+        return unified_services
+    
+    # Fallback to legacy approach if no unified services found
+    print("⚠️  No unified services found, falling back to legacy service discovery")
+    legacy_services = _discover_service_classes()
+    return [service_cls() for service_cls in legacy_services]
+
+
+# Use the new service discovery method
+AVAILABLE_SERVICES = get_available_services()
 
 
 __all__ = [
     "ServiceStrategy",
     "AVAILABLE_SERVICES",
+    "UnifiedServiceStrategy",
 ]

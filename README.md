@@ -52,9 +52,9 @@ SIMPLE follows three principles:
 - **Composable by Design**
 - **Auditable by Nature**
 
-No Kubernetes.
-No YAML sprawl.
-No fragile bash scripts.
+No Kubernetes.  
+No YAML sprawl.  
+No fragile bash scripts.  
 No copy-paste infrastructure.
 
 Just reproducible, hardened self-hosting.
@@ -76,19 +76,3 @@ sudo python src/main.py
 
 python -m pytest tests/ -v
 ```
-
-
-### TODO:
-first ask for user which would be used for volume 
-PrerequisiteDetector replace with which command may be, how do i get the installed app which ufw vs sudo which ufw give different results, what the definative way?
-
-1. Add support for custom files overrides/<path>/file.<ext>.jinja and rename <service>.yaml.jinja -> service.yaml.jinja 
-2.use the detected os to have customization to move out of diet pi
-3.add custome notifications like telegram, as service
-
-support enums in yaml, check about in authelia
-support service validation in about
-create a yaml schema if possible
-create dynamic prompts with validations
-provide option to select variations
-move away from hardcoded strategy

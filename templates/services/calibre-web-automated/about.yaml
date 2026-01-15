@@ -2,10 +2,16 @@ name: Calibre-Web-Automated
 description: "Web-based e-book library with Send-to-Kindle automation"
 url: "https://github.com/janeczku/calibre-web-automated"
 version: "0.6.24"
-category: "ebook"
+category:
+  enum: "ebook"
 enforced: false
 docker_image: "janeczku/calibre-web-automated:0.6.24"
 dependencies: []
 ports:
   http: 8083
-alternatives: ["default"]
+networks:
+  enum:
+    - APPLICATIONS
+alternatives:
+  - name: default
+    description: "Standard Calibre-Web automated configuration"

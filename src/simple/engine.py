@@ -156,6 +156,7 @@ class DockerEngine:
     def select_services(self, allow_incremental: bool = True) -> None:
         """
         Interactive service selection with detailed information from about.yaml files.
+        Now supports alternative configuration selection for services.
 
         Args:
             allow_incremental: If True, load existing services and allow adding new ones
@@ -195,10 +196,8 @@ class DockerEngine:
                 is_existing = service.name in self.existing_services
 
                 if category == "core" or enforced:
-                    self.selected_services.append(service)
-                    print(f"✅ {service_name} (AUTO-ENABLED)")
-                    if description:
-                        print(f"     {description}")
+                    # For enforced services, show alternative selection if available
+                    self._handle_service_with_alternatives(service, about_data, is_enforced=True)
                     continue
 
                 # Show service information
@@ -214,24 +213,9 @@ class DockerEngine:
                 ).ask()
 
                 if choice:
-                    if service not in self.selected_services:
-                        self.selected_services.append(service)
-
-                        # Collect any required prompts from about.yaml
-                        prompts = about_data.get('prompts', [])
-                        for prompt in prompts:
-                            prompt_value = self._get_prompt_input(prompt)
-                            # Store prompt values in secrets or context as appropriate
-                            prompt_type_str = prompt.get('type', {}).get('enum', ['STRING'])[0]
-                            if prompt_type_str in ['PASSWORD', 'SECRET']:
-                                self.secrets[prompt['name']] = prompt_value
-                            else:
-                                self.context[prompt['name']] = prompt_value
-
-                        # Collect any additional secrets not covered by prompts
-                        self._collect_secrets(service)
+                    self._handle_service_with_alternatives(service, about_data, is_enforced=False)
     
-    def _collect_secrets(self, service: ServiceStrategy) -> None:
+    def _collect_secrets(self, service: ServiceStrategy, about_data: Dict[str, Any] = None) -> None:
         """Securely collect service secrets."""
         for secret_key in service.get_required_secrets():
             if secret_key not in self.secrets:
@@ -247,11 +231,113 @@ class DockerEngine:
                         self.secrets[secret_key] = generated
                         print(f"   ✅ Generated secure {secret_key}")
                         continue
-                
+                 
                 value = questionary.password(
                     f"[{service.name}] {secret_key}:"
                 ).ask()
                 self.secrets[secret_key] = value
+
+    def _handle_service_with_alternatives(self, service: ServiceStrategy,
+                                         about_data: Dict[str, Any],
+                                         is_enforced: bool = False) -> None:
+        """
+        Handle service selection with alternative configuration options.
+        
+        Args:
+            service: ServiceStrategy instance
+            about_data: Service metadata from about.yaml
+            is_enforced: Whether this service is enforced/auto-enabled
+        """
+        service_name = about_data.get('name', service.name)
+        
+        # Check if the service supports alternatives (unified service approach)
+        if hasattr(service, 'get_available_alternatives'):
+            alternatives = service.get_available_alternatives()
+            
+            if len(alternatives) > 1:
+                # Multiple alternatives available - let user choose
+                choices = [
+                    {
+                        'name': f"{alt['name']}: {alt['description']}",
+                        'value': alt['name']
+                    }
+                    for alt in alternatives
+                ]
+                
+                if is_enforced:
+                    print(f"✅ {service_name} (AUTO-ENABLED)")
+                    if about_data.get('description'):
+                        print(f"     {about_data['description']}")
+
+                    # For enforced services, ask which alternative to use
+                    if choices:
+                        selected_alternative = questionary.select(
+                            f"Select configuration alternative for {service_name}:",
+                            choices=choices
+                        ).ask()
+                    else:
+                        raise ValueError(f"No alternatives available for enforced service {service_name}")
+                else:
+                    # For optional services, ask which alternative to use
+                    if choices:
+                        selected_alternative = questionary.select(
+                            f"Select configuration alternative for {service_name}:",
+                            choices=choices,
+                            default=choices[0]['value']
+                        ).ask()
+                    else:
+                        selected_alternative = questionary.select(
+                            f"Select configuration alternative for {service_name}:",
+                            choices=choices
+                        ).ask()
+                
+                # Set the selected alternative
+                service.set_alternative(selected_alternative)
+            elif len(alternatives) == 1:
+                # Only one alternative (default) - use it automatically
+                if is_enforced:
+                    print(f"✅ {service_name} (AUTO-ENABLED)")
+                    if about_data.get('description'):
+                        print(f"     {about_data['description']}")
+                else:
+                    print(f"✅ {service_name} enabled with default configuration")
+
+                # Use the single available alternative
+                service.set_alternative(alternatives[0]['name'])
+            else:
+                # No valid alternatives - this shouldn't happen due to sanity checks
+                print(f"⚠️  {service_name} has no valid alternatives, using default")
+        else:
+            # Legacy service - handle as before
+            if is_enforced:
+                self.selected_services.append(service)
+                print(f"✅ {service_name} (AUTO-ENABLED)")
+                if about_data.get('description'):
+                    print(f"     {about_data['description']}")
+            else:
+                self.selected_services.append(service)
+
+                # Use dynamic prompt scanning based on selected alternative
+                if hasattr(service, 'get_required_prompts_for_alternative'):
+                    prompts = service.get_required_prompts_for_alternative()
+                else:
+                    prompts = about_data.get('prompts', [])
+
+                for prompt in prompts:
+                    prompt_value = self._get_prompt_input(prompt)
+                    # Store prompt values in secrets or context as appropriate
+                    prompt_type_str = prompt.get('type', {}).get('enum', ['STRING'])[0]
+                    if prompt_type_str in ['PASSWORD', 'SECRET']:
+                        self.secrets[prompt['name']] = prompt_value
+                    else:
+                        self.context[prompt['name']] = prompt_value
+
+                # Collect any additional secrets not covered by prompts
+                self._collect_secrets(service, about_data)
+        
+        # Add to selected services if not already there
+        if service not in self.selected_services:
+            self.selected_services.append(service)
     
     def generate(self) -> None:
         """Generate complete infrastructure."""
@@ -352,11 +438,11 @@ class DockerEngine:
             raise ValueError(f"Failed to load networks template: {networks_result.error}")
 
         # Load defaults templates
-        vault_defaults_result = config_reader.read_template('x-vault-app-defaults.yaml.jinja', self.context)
+        vault_defaults_result = config_reader.read_template('anchors/x-vault-app-defaults.yaml.jinja', self.context)
         if not vault_defaults_result.success:
             raise ValueError(f"Failed to load vault-app-defaults template: {vault_defaults_result.error}")
 
-        lsio_defaults_result = config_reader.read_template('x-lsio-defaults.yaml.jinja', self.context)
+        lsio_defaults_result = config_reader.read_template('anchors/x-lsio-defaults.yaml.jinja', self.context)
         if not lsio_defaults_result.success:
             raise ValueError(f"Failed to load lsio-defaults template: {lsio_defaults_result.error}")
         
@@ -365,7 +451,6 @@ class DockerEngine:
         
         # Build compose structure
         compose = {
-            'version': '3.8',
             'networks': networks_yaml.get('networks', {}),
             'services': {}
         }

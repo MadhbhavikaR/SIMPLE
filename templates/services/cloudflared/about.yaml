@@ -19,4 +19,6 @@ docker_image: "cloudflare/cloudflared:2024.8.1"
 dependencies: []
 ports:
   http: 8080
-alternatives: ["default"]
+alternatives:
+  - name: default
+    description: "Standard Cloudflared configuration"
