@@ -84,11 +84,12 @@ class DockerEngine:
         about_data = self._load_service_about_data(service_name)
         prompts = about_data.get('prompts', [])
 
-        # Extract secret names from prompts where type is PASSWORD or SECRET
+        # Extract secret names from prompts where type is SECRET
+        # Note: PASSWORD is deprecated and replaced with SECRET
         secrets = []
         for prompt in prompts:
             prompt_type_str = prompt.get('type', {}).get('enum', ['STRING'])[0]
-            if prompt_type_str in ['PASSWORD', 'SECRET']:
+            if prompt_type_str in ['SECRET']:
                 secrets.append(prompt['name'])
 
         # Filter out secrets that don't exist in self.secrets
@@ -317,20 +318,20 @@ class DockerEngine:
             else:
                 self.selected_services.append(service)
 
-                # Use dynamic prompt scanning based on selected alternative
-                if hasattr(service, 'get_required_prompts_for_alternative'):
-                    prompts = service.get_required_prompts_for_alternative()
-                else:
-                    prompts = about_data.get('prompts', [])
+        # Use dynamic prompt scanning based on selected alternative
+        if hasattr(service, 'get_required_prompts_for_alternative'):
+            prompts = service.get_required_prompts_for_alternative()
+        else:
+            prompts = about_data.get('prompts', [])
 
-                for prompt in prompts:
-                    prompt_value = self._get_prompt_input(prompt)
-                    # Store prompt values in secrets or context as appropriate
-                    prompt_type_str = prompt.get('type', {}).get('enum', ['STRING'])[0]
-                    if prompt_type_str in ['PASSWORD', 'SECRET']:
-                        self.secrets[prompt['name']] = prompt_value
-                    else:
-                        self.context[prompt['name']] = prompt_value
+        for prompt in prompts:
+            prompt_value = self._get_prompt_input(prompt)
+            # Store prompt values in secrets or context as appropriate
+            prompt_type_str = prompt.get('type', {}).get('enum', ['STRING'])[0]
+            if prompt_type_str in ['SECRET']:
+                self.secrets[prompt['name']] = prompt_value
+            else:
+                self.context[prompt['name']] = prompt_value
 
                 # Collect any additional secrets not covered by prompts
                 self._collect_secrets(service, about_data)
@@ -368,9 +369,10 @@ class DockerEngine:
         # Only store non-secret configuration values
         config_data = {}
         secret_keys = set(self.secrets.keys())
-        secret_keys.update(['CF_DOCKER_TOKEN', 'MARIADB_ROOT_PASSPHRASE', 'PHOTOPRISM_ADMIN_PASSWORD',
-                           'AUTHELIA_JWT_SECRET', 'AUTHELIA_SESSION_SECRET', 'AUTHELIA_STORAGE_PASSWORD',
-                           'CROWDSEC_API_KEY'])
+        # Note: Hardcoded secret keys are deprecated - use dynamic detection from about.yaml
+        # secret_keys.update(['CF_DOCKER_TOKEN', 'MARIADB_ROOT_PASSPHRASE', 'PHOTOPRISM_ADMIN_PASSWORD',
+        #                    'AUTHELIA_JWT_SECRET', 'AUTHELIA_SESSION_SECRET', 'AUTHELIA_STORAGE_PASSWORD',
+        #                    'CROWDSEC_API_KEY'])
         
         for key, value in self.context.items():
             if key not in secret_keys and isinstance(value, (str, int, Path)):
@@ -399,9 +401,10 @@ class DockerEngine:
         
         # Define which keys are secrets (should use Docker secrets)
         secret_keys = set(self.secrets.keys())
-        secret_keys.update(['CF_DOCKER_TOKEN', 'MARIADB_ROOT_PASSPHRASE', 'PHOTOPRISM_ADMIN_PASSWORD',
-                           'AUTHELIA_JWT_SECRET', 'AUTHELIA_SESSION_SECRET', 'AUTHELIA_STORAGE_PASSWORD',
-                           'CROWDSEC_API_KEY'])
+        # Note: Hardcoded secret keys are deprecated - use dynamic detection from about.yaml
+        # secret_keys.update(['CF_DOCKER_TOKEN', 'MARIADB_ROOT_PASSPHRASE', 'PHOTOPRISM_ADMIN_PASSWORD',
+        #                    'AUTHELIA_JWT_SECRET', 'AUTHELIA_SESSION_SECRET', 'AUTHELIA_STORAGE_PASSWORD',
+        #                    'CROWDSEC_API_KEY'])
         
         # Add all non-secret variables to .env
         for key, value in self.context.items():

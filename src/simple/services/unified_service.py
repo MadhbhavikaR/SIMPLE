@@ -200,7 +200,7 @@ class UnifiedServiceStrategy(ServiceStrategy):
         prompts = self.about_data.get('prompts', [])
         for prompt in prompts:
             prompt_type_str = prompt.get('type', {}).get('enum', ['STRING'])[0]
-            if prompt_type_str in ['PASSWORD', 'SECRET']:
+            if prompt_type_str in ['SECRET']:
                 secrets.append(prompt['name'])
 
         return secrets
@@ -236,8 +236,13 @@ class UnifiedServiceStrategy(ServiceStrategy):
             env_pattern = r'\{\{\s*\$\{([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}'
             env_matches = re.findall(env_pattern, template_content)
 
+            # Look for secret file references: /run/secrets/VAR_NAME
+            secret_pattern = r'/run/secrets/([a-zA-Z_][a-zA-Z0-9_]*)'
+            secret_matches = re.findall(secret_pattern, template_content)
+
             used_variables.update(matches)
             used_variables.update(env_matches)
+            used_variables.update(secret_matches)
 
             # Filter prompts to only those used in the selected template
             required_prompts = []
