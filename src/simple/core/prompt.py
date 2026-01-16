@@ -6,4 +6,3 @@ class PromptType(Enum):
     DOMAIN = auto()
     NUMBER = auto()
     STRING = auto()
-    # PASSWORD = auto()  # Deprecated - use SECRET instead

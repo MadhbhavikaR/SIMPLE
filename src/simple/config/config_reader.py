@@ -35,6 +35,7 @@ class TemplateType(Enum):
         PATCH: Service patch templates (templates/services/<service>/patches/)
         NATIVE: Native system configuration templates (templates/native/)
         DEFAULT: Default configuration templates (templates/default/)
+        ANCHOR: Anchor templates (templates/anchors/)
     """
     NETWORK = "networks"
     SERVICE = "services"
@@ -42,6 +43,7 @@ class TemplateType(Enum):
     PATCH = "patches"
     NATIVE = "native"
     DEFAULT = "default"
+    ANCHOR = "anchors"
 
 class ConfigReader:
     """Unified configuration reader with YAML→JSON and template rendering."""

@@ -282,15 +282,6 @@ class UnifiedServiceStrategy(ServiceStrategy):
         if dependencies:
             template_context['DEPENDENCIES'] = dependencies
         
-        # Load the lsio-defaults template first
-        lsio_defaults_result = self.config_reader.read_template(
-            "anchors/x-lsio-defaults.yaml",
-            template_context
-        )
-        
-        if lsio_defaults_result.success:
-            template_context['lsio_defaults'] = lsio_defaults_result.data
-        
         # Load the selected alternative template
         template_path = f"{self.service_name}/{self.selected_alternative}.yaml.jinja"
         result = self.config_reader.read_template(
@@ -305,11 +296,9 @@ class UnifiedServiceStrategy(ServiceStrategy):
                 f"(alternative: {self.selected_alternative}): {result.error}"
             )
         
-        # Combine with lsio-defaults if available
-        if lsio_defaults_result.success:
-            return f"{lsio_defaults_result.data}\n{result.data}"
-        else:
-            return result.data
+        # Return just the service YAML (don't combine with lsio-defaults here)
+        # The lsio-defaults will be handled at the compose file level
+        return result.data
     
     def get_volume_paths(self, context: Dict[str, Any]) -> List[Path]:
         """Returns volume directories to create."""

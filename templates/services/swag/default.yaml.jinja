@@ -4,7 +4,12 @@
     hostname: swag
     cap_add:
       - NET_ADMIN
-    <<: *lsio-defaults
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /run:rw,exec,nosuid,nodev,size=32m
+    restart: unless-stopped
     networks:
       - edge
       - app

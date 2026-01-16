@@ -16,3 +16,25 @@ networks:
 alternatives:
   - name: default
     description: "Standard SWAG configuration with Nginx and Let's Encrypt"
+prompts:
+  - name: DOMAIN
+    description: "Root domain for Let's Encrypt certificates"
+    type:
+      enum: ["DOMAIN"]
+    required: true
+  - name: SUBDOMAINS
+    description: "Comma-separated list of subdomains"
+    type:
+      enum: ["STRING"]
+    required: true
+  - name: EMAIL
+    description: "Email address for Let's Encrypt notifications"
+    type:
+      enum: ["EMAIL"]
+    required: true
+  - name: SWAG_STAGING
+    description: "Use Let's Encrypt staging environment (true/false)"
+    type:
+      enum: ["STRING"]
+    required: true
+    default: "false"

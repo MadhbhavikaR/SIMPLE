@@ -1,5 +1,7 @@
 import os
 import yaml
+import logging
+import logging.config
 from pathlib import Path
 from typing import Dict, Any, List
 import questionary
@@ -15,6 +17,36 @@ class DockerEngine:
         self.secrets: Dict[str, str] = {}
         self.existing_services: set = set()  # Track existing services for merging
         self.dependencies: Dict[str, List[str]] = {}  # Service dependencies
+        self.optional_dependencies: Dict[str, List[str]] = {}  # Optional service dependencies
+        self._setup_logging()
+
+    def _setup_logging(self) -> None:
+        """Initialize logging configuration."""
+        try:
+            from simple.config.config_reader import ConfigReader
+            config_reader = ConfigReader()
+            logging_config_path = config_reader.template_dir / 'framework' / 'logging.yaml'
+
+            if logging_config_path.exists():
+                with open(logging_config_path, 'r', encoding='utf-8') as f:
+                    import yaml
+                    logging_config = yaml.safe_load(f)
+                    logging.config.dictConfig(logging_config)
+                    logging.info("Logging configured from YAML file")
+            else:
+                # Fallback to basic logging configuration
+                logging.basicConfig(
+                    level=logging.INFO,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    handlers=[
+                        logging.StreamHandler(),
+                        logging.FileHandler('simple.log')
+                    ]
+                )
+                logging.warning("Logging configuration file not found, using basic configuration")
+        except Exception as e:
+            logging.basicConfig(level=logging.INFO)
+            logging.error(f"Failed to configure logging: {e}")
     
     def _load_existing_compose(self) -> Dict[str, Any]:
         """Load existing compose file if it exists for regeneration."""
@@ -138,7 +170,7 @@ class DockerEngine:
             raise ValueError(f"Invalid prompt type '{prompt_type_str}' in about.yaml. Valid types: {[e.name for e in PromptType]}")
 
         # Use enum-based logic
-        if prompt_type == PromptType.PASSWORD or prompt_type == PromptType.SECRET:
+        if prompt_type == PromptType.SECRET:
             return questionary.password(f"[{prompt_name}] {description}:").ask()
         elif prompt_type == PromptType.STRING:
             return questionary.text(f"[{prompt_name}] {description}:").ask()
@@ -181,8 +213,30 @@ class DockerEngine:
                 services_by_category[category] = []
             services_by_category[category].append(service)
 
-        # Process services by category
+        # First pass: Process enforced services (always enabled)
+        print(f"\n📋 ENFORCED SERVICES")
+        print("=" * 40)
+        print("These services are required and will be automatically enabled:")
+
         for category, services in services_by_category.items():
+            for service in services:
+                # Load about.yaml data for this service
+                about_data = self._load_service_about_data(service.name)
+                enforced = about_data.get('enforced', False)
+
+                if enforced:
+                    service_name = about_data.get('name', service.name)
+                    description = about_data.get('description', 'No description available')
+                    print(f"\n📦 {service_name}")
+                    print(f"     {description}")
+                    self._handle_service_with_alternatives(service, about_data, is_enforced=True)
+
+        # Second pass: Process optional services
+        for category, services in services_by_category.items():
+            # Skip enforced services (already processed)
+            if category == "core":
+                continue
+
             print(f"\n📋 {category.upper()} SERVICES")
             print("=" * 40)
 
@@ -193,13 +247,12 @@ class DockerEngine:
                 description = about_data.get('description', 'No description available')
                 enforced = about_data.get('enforced', False)
 
+                # Skip enforced services (already processed)
+                if enforced:
+                    continue
+
                 # Check if service already exists
                 is_existing = service.name in self.existing_services
-
-                if category == "core" or enforced:
-                    # For enforced services, show alternative selection if available
-                    self._handle_service_with_alternatives(service, about_data, is_enforced=True)
-                    continue
 
                 # Show service information
                 print(f"\n📦 {service_name}")
@@ -281,10 +334,12 @@ class DockerEngine:
                 else:
                     # For optional services, ask which alternative to use
                     if choices:
+                        # Ensure the default value exists in choices
+                        default_value = choices[0]['value']
                         selected_alternative = questionary.select(
                             f"Select configuration alternative for {service_name}:",
                             choices=choices,
-                            default=choices[0]['value']
+                            default=default_value
                         ).ask()
                     else:
                         selected_alternative = questionary.select(
@@ -430,39 +485,47 @@ class DockerEngine:
     def _write_compose_file(self) -> None:
         """Generate docker-compose.yaml using templates."""
         from simple.config.config_reader import ConfigReader
-        
+
         compose_path = self.context['DOCKER_DIR'] / 'docker-compose.yaml'
         config_reader = ConfigReader()
-        
-        # Load network template
+
+        # Load network template using TemplateType enum
         from simple.config.config_reader import TemplateType
         networks_result = config_reader.read_template('networks.yaml.jinja', self.context, template_type=TemplateType.NETWORK)
         if not networks_result.success:
             raise ValueError(f"Failed to load networks template: {networks_result.error}")
 
-        # Load defaults templates
-        vault_defaults_result = config_reader.read_template('anchors/x-vault-app-defaults.yaml.jinja', self.context)
+        # Load defaults templates using TemplateType enum for anchors
+        # Use the ANCHOR template type for anchor templates
+        vault_defaults_result = config_reader.read_template('anchors/x-vault-app-defaults.yaml.jinja', self.context, template_type=TemplateType.ANCHOR)
         if not vault_defaults_result.success:
             raise ValueError(f"Failed to load vault-app-defaults template: {vault_defaults_result.error}")
 
-        lsio_defaults_result = config_reader.read_template('anchors/x-lsio-defaults.yaml.jinja', self.context)
+        lsio_defaults_result = config_reader.read_template('anchors/x-lsio-defaults.yaml.jinja', self.context, template_type=TemplateType.ANCHOR)
         if not lsio_defaults_result.success:
             raise ValueError(f"Failed to load lsio-defaults template: {lsio_defaults_result.error}")
-        
+
         # Parse network YAML
         networks_yaml = yaml.safe_load(networks_result.data)
-        
-        # Build compose structure
+
+        # Build compose structure with proper YAML anchor structure
         compose = {
             'networks': networks_yaml.get('networks', {}),
             'services': {}
         }
-        
-        # Add defaults as YAML anchors (parse from template output)
+
+        # Add defaults as YAML anchors at root level
         vault_defaults_yaml = yaml.safe_load(vault_defaults_result.data)
         lsio_defaults_yaml = yaml.safe_load(lsio_defaults_result.data)
-        compose.update(vault_defaults_yaml)
-        compose.update(lsio_defaults_yaml)
+
+        # Dynamically extract anchor definitions from both templates
+        for anchor_name, anchor_content in vault_defaults_yaml.items():
+            if anchor_name.startswith('x-'):
+                compose[anchor_name] = anchor_content
+
+        for anchor_name, anchor_content in lsio_defaults_yaml.items():
+            if anchor_name.startswith('x-'):
+                compose[anchor_name] = anchor_content
         
         # Add Docker secrets section (only if we have secrets)
         if self.secrets:
