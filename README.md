@@ -76,3 +76,14 @@ sudo python src/main.py
 
 python -m pytest tests/ -v
 ```
+
+## 📚 Documentation
+
+Comprehensive project documentation is available in the [docs/project/](docs/project/) directory:
+
+- **[Project Overview](docs/project/project-overview.md)** - Goals, features, and vision
+- **[Tech Stack](docs/project/tech-stack.md)** - Technology choices and tools
+- **[Architecture](docs/project/architecture.md)** - System design and components
+- **[Requirements](docs/project/requirements.md)** - Current and future requirements
+
+For complete documentation, see the **[Project Documentation Hub](docs/project/README.md)**.
