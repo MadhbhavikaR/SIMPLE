@@ -335,7 +335,7 @@ class DockerEngine:
                     # For optional services, ask which alternative to use
                     if choices:
                         # Ensure the default value exists in choices
-                        default_value = choices[0]['value']
+                        default_value = choices[0]['name']
                         selected_alternative = questionary.select(
                             f"Select configuration alternative for {service_name}:",
                             choices=choices,
@@ -497,11 +497,11 @@ class DockerEngine:
 
         # Load defaults templates using TemplateType enum for anchors
         # Use the ANCHOR template type for anchor templates
-        vault_defaults_result = config_reader.read_template('anchors/x-vault-app-defaults.yaml.jinja', self.context, template_type=TemplateType.ANCHOR)
+        vault_defaults_result = config_reader.read_template('x-vault-app-defaults.yaml.jinja', self.context, template_type=TemplateType.ANCHOR)
         if not vault_defaults_result.success:
             raise ValueError(f"Failed to load vault-app-defaults template: {vault_defaults_result.error}")
 
-        lsio_defaults_result = config_reader.read_template('anchors/x-lsio-defaults.yaml.jinja', self.context, template_type=TemplateType.ANCHOR)
+        lsio_defaults_result = config_reader.read_template('x-lsio-defaults.yaml.jinja', self.context, template_type=TemplateType.ANCHOR)
         if not lsio_defaults_result.success:
             raise ValueError(f"Failed to load lsio-defaults template: {lsio_defaults_result.error}")
 

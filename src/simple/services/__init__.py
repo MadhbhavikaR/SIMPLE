@@ -13,6 +13,10 @@ from typing import List, Type, Dict
 
 from simple.core.container import ServiceStrategy
 from simple.services.unified_service import UnifiedServiceStrategy
+from simple.services.sanity_check import SanityCheck
+from simple.services.alternatives_sanity_check import AlternativesSanityCheck
+from simple.services.required_prompts_sanity_check import RequiredPromptsSanityCheck
+from simple.services.sanity_check_runner import SanityCheckRunner
 from simple.config.config_reader import ConfigReader
 
 PACKAGE_PATH = Path(__file__).parent
@@ -127,4 +131,9 @@ __all__ = [
     "ServiceStrategy",
     "AVAILABLE_SERVICES",
     "UnifiedServiceStrategy",
+    # Sanity check classes
+    "SanityCheck",
+    "AlternativesSanityCheck",
+    "RequiredPromptsSanityCheck",
+    "SanityCheckRunner",
 ]
