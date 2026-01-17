@@ -296,18 +296,18 @@ class DockerEngine:
                                          is_enforced: bool = False) -> None:
         """
         Handle service selection with alternative configuration options.
-        
+
         Args:
             service: ServiceStrategy instance
             about_data: Service metadata from about.yaml
             is_enforced: Whether this service is enforced/auto-enabled
         """
         service_name = about_data.get('name', service.name)
-        
+
         # Check if the service supports alternatives (unified service approach)
         if hasattr(service, 'get_available_alternatives'):
             alternatives = service.get_available_alternatives()
-            
+
             if len(alternatives) > 1:
                 # Multiple alternatives available - let user choose
                 choices = [
@@ -317,36 +317,23 @@ class DockerEngine:
                     }
                     for alt in alternatives
                 ]
-                
+
                 if is_enforced:
                     print(f"✅ {service_name} (AUTO-ENABLED)")
                     if about_data.get('description'):
                         print(f"     {about_data['description']}")
 
-                    # For enforced services, ask which alternative to use
-                    if choices:
-                        selected_alternative = questionary.select(
-                            f"Select configuration alternative for {service_name}:",
-                            choices=choices
-                        ).ask()
-                    else:
-                        raise ValueError(f"No alternatives available for enforced service {service_name}")
+                # For enforced services, ask which alternative to use
+                if choices:
+                    # The fix: Remove the default parameter to avoid questionary validation issues
+                    selected_alternative = questionary.select(
+                        f"Select configuration alternative for {service_name}:",
+                        choices=choices
+                        # No default parameter - this resolves the ValueError issue
+                    ).ask()
                 else:
-                    # For optional services, ask which alternative to use
-                    if choices:
-                        # Ensure the default value exists in choices
-                        default_value = choices[0]['name']
-                        selected_alternative = questionary.select(
-                            f"Select configuration alternative for {service_name}:",
-                            choices=choices,
-                            default=default_value
-                        ).ask()
-                    else:
-                        selected_alternative = questionary.select(
-                            f"Select configuration alternative for {service_name}:",
-                            choices=choices
-                        ).ask()
-                
+                    raise ValueError(f"No alternatives available for enforced service {service_name}")
+
                 # Set the selected alternative
                 service.set_alternative(selected_alternative)
             elif len(alternatives) == 1:
@@ -390,7 +377,7 @@ class DockerEngine:
 
                 # Collect any additional secrets not covered by prompts
                 self._collect_secrets(service, about_data)
-        
+
         # Add to selected services if not already there
         if service not in self.selected_services:
             self.selected_services.append(service)
