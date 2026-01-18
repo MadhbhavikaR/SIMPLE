@@ -16,7 +16,7 @@ class SSHEnforcer(SecurityEnforcerBase):
     def process(self) -> Dict[str, Any]:
         return {
             'port': self._detect_ssh_port(),
-            'has_active_session': self._has_active_ssh_session()
+            'has_active_session': y()
         }
 
     def apply(self, payload: Optional[Dict[str, Any]] = None, dry_run: bool = False) -> bool:

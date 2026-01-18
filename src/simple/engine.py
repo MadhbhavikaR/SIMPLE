@@ -544,16 +544,18 @@ class DockerEngine:
         for service in self.selected_services:
             if service.name == "networks":
                 continue  # Networks are defined above
-            
+
             # Resolve dependencies for this service
             resolved_deps = self._resolve_dependencies(service.name, selected_service_names)
-            
+
             # Add dependencies to context for template rendering
             template_context = self.context.copy()
             template_context['DEPENDENCIES'] = resolved_deps
-            
+
             service_yaml_str = service.generate_service_yaml(template_context)
             if service_yaml_str.strip():  # Only process non-empty YAML
+                # Parse the service YAML and add it directly to the compose structure
+                # The anchor definitions are already in the compose structure from earlier
                 service_yaml = yaml.safe_load(service_yaml_str)
                 if service_yaml:
                     for svc_name, svc_config in service_yaml.items():
@@ -589,7 +591,7 @@ class DockerEngine:
                             if isinstance(vol, str) and '/var/run/docker.sock' in vol:
                                 if 'socket-proxy' not in selected_service_names:
                                     socket_mounts.append(svc_name)
-                    
+
                     compose['services'].update(service_yaml)
         
         # Merge with existing services if regenerating
