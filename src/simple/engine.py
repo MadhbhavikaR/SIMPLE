@@ -232,6 +232,9 @@ class DockerEngine:
                     self._handle_service_with_alternatives(service, about_data, is_enforced=True)
 
         # Second pass: Process optional services
+        # Get pre-selected services from context (set during wizard)
+        pre_selected_services = set(self.context.get("SERVICES", {}).keys())
+        
         for category, services in services_by_category.items():
             # Skip enforced services (already processed)
             if category == "core":
@@ -251,6 +254,9 @@ class DockerEngine:
                 if enforced:
                     continue
 
+                # Check if service was pre-selected in the wizard
+                is_pre_selected = service.name in pre_selected_services
+                
                 # Check if service already exists
                 is_existing = service.name in self.existing_services
 
@@ -258,16 +264,21 @@ class DockerEngine:
                 print(f"\n📦 {service_name}")
                 print(f"     {description}")
 
-                # Ask user if they want to enable this service
-                default_value = is_existing
-                choice = questionary.confirm(
-                    f"Enable {service_name}?" + (" (already configured)" if is_existing else ""),
-                    default=default_value,
-                    qmark="?"
-                ).ask()
-
-                if choice:
+                # If service was pre-selected, skip confirmation and process directly
+                if is_pre_selected:
+                    print(f"✅ {service_name} enabled with default configuration")
                     self._handle_service_with_alternatives(service, about_data, is_enforced=False)
+                else:
+                    # Ask user if they want to enable this service (only if not pre-selected)
+                    default_value = is_existing
+                    choice = questionary.confirm(
+                        f"Enable {service_name}?" + (" (already configured)" if is_existing else ""),
+                        default=default_value,
+                        qmark="?"
+                    ).ask()
+
+                    if choice:
+                        self._handle_service_with_alternatives(service, about_data, is_enforced=False)
     
     def _collect_secrets(self, service: ServiceStrategy, about_data: Dict[str, Any] = None) -> None:
         """Securely collect service secrets."""
@@ -411,10 +422,6 @@ class DockerEngine:
         # Only store non-secret configuration values
         config_data = {}
         secret_keys = set(self.secrets.keys())
-        # Note: Hardcoded secret keys are deprecated - use dynamic detection from about.yaml
-        # secret_keys.update(['CF_DOCKER_TOKEN', 'MARIADB_ROOT_PASSPHRASE', 'PHOTOPRISM_ADMIN_PASSWORD',
-        #                    'AUTHELIA_JWT_SECRET', 'AUTHELIA_SESSION_SECRET', 'AUTHELIA_STORAGE_PASSWORD',
-        #                    'CROWDSEC_API_KEY'])
         
         for key, value in self.context.items():
             if key not in secret_keys and isinstance(value, (str, int, Path)):
@@ -443,10 +450,6 @@ class DockerEngine:
         
         # Define which keys are secrets (should use Docker secrets)
         secret_keys = set(self.secrets.keys())
-        # Note: Hardcoded secret keys are deprecated - use dynamic detection from about.yaml
-        # secret_keys.update(['CF_DOCKER_TOKEN', 'MARIADB_ROOT_PASSPHRASE', 'PHOTOPRISM_ADMIN_PASSWORD',
-        #                    'AUTHELIA_JWT_SECRET', 'AUTHELIA_SESSION_SECRET', 'AUTHELIA_STORAGE_PASSWORD',
-        #                    'CROWDSEC_API_KEY'])
         
         # Add all non-secret variables to .env
         for key, value in self.context.items():
@@ -482,16 +485,6 @@ class DockerEngine:
         if not networks_result.success:
             raise ValueError(f"Failed to load networks template: {networks_result.error}")
 
-        # Load defaults templates using TemplateType enum for anchors
-        # Use the ANCHOR template type for anchor templates
-        vault_defaults_result = config_reader.read_template('x-vault-app-defaults.yaml.jinja', self.context, template_type=TemplateType.ANCHOR)
-        if not vault_defaults_result.success:
-            raise ValueError(f"Failed to load vault-app-defaults template: {vault_defaults_result.error}")
-
-        lsio_defaults_result = config_reader.read_template('x-lsio-defaults.yaml.jinja', self.context, template_type=TemplateType.ANCHOR)
-        if not lsio_defaults_result.success:
-            raise ValueError(f"Failed to load lsio-defaults template: {lsio_defaults_result.error}")
-
         # Parse network YAML
         networks_yaml = yaml.safe_load(networks_result.data)
 
@@ -501,18 +494,59 @@ class DockerEngine:
             'services': {}
         }
 
-        # Add defaults as YAML anchors at root level
-        vault_defaults_yaml = yaml.safe_load(vault_defaults_result.data)
-        lsio_defaults_yaml = yaml.safe_load(lsio_defaults_result.data)
-
-        # Dynamically extract anchor definitions from both templates
-        for anchor_name, anchor_content in vault_defaults_yaml.items():
-            if anchor_name.startswith('x-'):
-                compose[anchor_name] = anchor_content
-
-        for anchor_name, anchor_content in lsio_defaults_yaml.items():
-            if anchor_name.startswith('x-'):
-                compose[anchor_name] = anchor_content
+        # Dynamically discover and load all anchor templates
+        anchor_templates = {}
+        anchors_dir = config_reader.template_dir / "anchors"
+        
+        if anchors_dir.exists():
+            for anchor_file in anchors_dir.glob("*.yaml.jinja"):
+                try:
+                    # Read the anchor template
+                    anchor_result = config_reader.read_template(anchor_file.name, self.context, template_type=TemplateType.ANCHOR)
+                    if not anchor_result.success:
+                        print(f"⚠️  Failed to load anchor template {anchor_file.name}: {anchor_result.error}")
+                        continue
+                    
+                    # Parse the anchor template
+                    anchor_yaml = yaml.safe_load(anchor_result.data)
+                    if anchor_yaml:
+                        anchor_templates.update(anchor_yaml)
+                        
+                except Exception as e:
+                    print(f"⚠️  Failed to process anchor template {anchor_file.name}: {e}")
+                    continue
+        
+        # Track which anchors are actually used by services
+        used_anchors = set()
+        
+        # First pass: Generate services and track used anchors
+        for service in self.selected_services:
+            if service.name == "networks":
+                continue  # Networks are defined above
+            
+            # Define selected_service_names before using it
+            selected_service_names = [s.name for s in self.selected_services]
+            
+            # Resolve dependencies for this service
+            resolved_deps = self._resolve_dependencies(service.name, selected_service_names)
+            
+            # Add dependencies to context for template rendering
+            template_context = self.context.copy()
+            template_context['DEPENDENCIES'] = resolved_deps
+            
+            service_yaml_str = service.generate_service_yaml(template_context)
+            if service_yaml_str.strip():  # Only process non-empty YAML
+                # Check which anchors are referenced in this service YAML
+                for anchor_name in anchor_templates.keys():
+                    if anchor_name.startswith('x-'):
+                        alias_name = anchor_name.split('x-')[1] if 'x-' in anchor_name else anchor_name
+                        if f"*{alias_name}" in service_yaml_str:
+                            used_anchors.add(anchor_name)
+        
+        # Add only the used anchors to the compose structure
+        for anchor_name in used_anchors:
+            if anchor_name in anchor_templates:
+                compose[anchor_name] = anchor_templates[anchor_name]
         
         # Add Docker secrets section (only if we have secrets)
         if self.secrets:
@@ -537,10 +571,10 @@ class DockerEngine:
         # Get selected service names for dependency resolution
         selected_service_names = {s.name for s in self.selected_services if s.name != "networks"}
         
-        # Check for Docker socket mounting (security warning)
-        socket_mounts = []
+        # Track which anchors are actually used by services
+        used_anchors = set()
         
-        # Generate services (skip NetworkManager as it's just a network definition)
+        # First pass: Generate services and track used anchors
         for service in self.selected_services:
             if service.name == "networks":
                 continue  # Networks are defined above
@@ -554,9 +588,32 @@ class DockerEngine:
 
             service_yaml_str = service.generate_service_yaml(template_context)
             if service_yaml_str.strip():  # Only process non-empty YAML
-                # Parse the service YAML and add it directly to the compose structure
-                # The anchor definitions are already in the compose structure from earlier
-                service_yaml = yaml.safe_load(service_yaml_str)
+                # Fix YAML anchor resolution by including anchor definitions
+                # Use the dynamically loaded anchor templates
+                anchors_yaml = "# YAML Anchors for service definitions\n"
+                
+                # Add all discovered anchors from anchor_templates
+                for anchor_name, anchor_content in anchor_templates.items():
+                    if anchor_name.startswith('x-'):
+                        # Extract the anchor alias name (remove x- prefix)
+                        alias_name = anchor_name.split('x-')[1] if 'x-' in anchor_name else anchor_name
+                        anchors_yaml += f"{anchor_name}: &{alias_name}\n"
+                        
+                        # Convert the anchor content to YAML format
+                        if isinstance(anchor_content, dict):
+                            for key, value in anchor_content.items():
+                                if isinstance(value, list):
+                                    anchors_yaml += f"  {key}:\n"
+                                    for item in value:
+                                        anchors_yaml += f"    - {item}\n"
+                                else:
+                                    anchors_yaml += f"  {key}: {value}\n"
+                
+                # Combine anchors with service YAML for proper alias resolution
+                combined_yaml_str = f"{anchors_yaml}\n{service_yaml_str}"
+                
+                # Parse the combined YAML and add it directly to the compose structure
+                service_yaml = yaml.safe_load(combined_yaml_str)
                 if service_yaml:
                     for svc_name, svc_config in service_yaml.items():
                         # Add depends_on dynamically if dependencies exist
@@ -585,6 +642,10 @@ class DockerEngine:
                         if networks_enum:
                             svc_config['networks'] = networks_enum
 
+                        # Initialize socket_mounts list if not already defined
+                        if 'socket_mounts' not in locals():
+                            socket_mounts = []
+                        
                         # Check for direct docker.sock mounts
                         volumes = svc_config.get('volumes', [])
                         for vol in volumes:

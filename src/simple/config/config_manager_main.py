@@ -130,9 +130,9 @@ class ConfigManager:
         self.context["SCRIPTS_DIR"] = Path(path).resolve()
 
     def _prompt_network_config(self) -> None:
-        self.context["DOMAIN"] = questionary.text("Base domain name:").ask()
-        self.context["EMAIL"] = questionary.text("SSL email:").ask()
-        self.context["SUBDOMAINS"] = questionary.text("Subdomains (comma separated):").ask()
+        # Network configuration should be handled from about.yaml files
+        # Remove these prompts as they are handled per-service
+        pass
 
     # -------------------------------------------------------------------------
     # SERVICE SELECTION
