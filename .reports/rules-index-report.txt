@@ -1,1 +1,0 @@
-Rules index validation and update completed. All files now have proper frontmatter.

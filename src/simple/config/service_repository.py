@@ -11,11 +11,14 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import questionary
 from simple.config.config_reader import ConfigReader
+from .service_definition import ServiceDefinition
 
 class ServiceRepository:
     """Service discovery and metadata loader"""
 
-    def __init__(self, config_reader: ConfigReader, templates_dir: Path = Path("templates")):
+    def __init__(self, config_reader: ConfigReader, templates_dir: Path = None):
+        if templates_dir is None:
+            templates_dir = config_reader.template_dir
         self.services_dir = templates_dir / "services"
         self.config_reader = config_reader
 
@@ -33,12 +36,17 @@ class ServiceRepository:
             if not about_file.exists():
                 continue
 
-            rel_path = about_file.relative_to(self.services_dir.parent)
-            result = self.config_reader.read_yaml_config(str(rel_path)) #FIXME: do ot pass .yaml here
-
-            if not result.success or not result.data:
+            # Read the about.yaml file directly instead of using config_reader
+            # which is designed for config files, not template files
+            try:
+                with open(about_file, 'r', encoding='utf-8') as f:
+                    import yaml
+                    about_data = yaml.safe_load(f)
+                    
+                if about_data:
+                    services.append(ServiceDefinition(service_dir.name, about_data))
+            except Exception as e:
+                print(f"⚠️  Failed to load service {service_dir.name}: {e}")
                 continue
-
-            services.append(ServiceDefinition(service_dir.name, result.data))
 
         return services

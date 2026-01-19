@@ -1,0 +1,4 @@
+Configuration validation in src/simple/config/config_reader.py doesn't handle nested objects properly
+Service detection in src/simple/detectors/server_detector.py needs better error handling
+Template rendering in templates/services/nextcloud/default.yaml.jinja has potential injection issues
+Test coverage for src/simple/core/network_manager.py is insufficient

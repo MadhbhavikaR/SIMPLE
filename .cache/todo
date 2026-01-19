@@ -1,0 +1,8 @@
+Analyze project structure and identify core components
+Review configuration system in src/simple/config/
+Examine service detection mechanism in src/simple/detectors/
+Understand template system in templates/
+Check test coverage and identify gaps
+Document current architecture in .cache/architecture.md
+Create initial task breakdown for refactoring
+Test task
