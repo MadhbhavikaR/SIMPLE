@@ -1,0 +1,72 @@
+PUID: '1000'
+PGID: '1000'
+PUSER: shadow-gust
+PGROUP: shadow-gust
+BASE_DIR: !!python/object/apply:pathlib.PosixPath
+- /mnt/Storage/Projects/SIMPLE/del3
+VOLUMES_DIR: !!python/object/apply:pathlib.PosixPath
+- /mnt/Storage/Projects/SIMPLE/del3/volumes
+DOCKER_DIR: !!python/object/apply:pathlib.PosixPath
+- /mnt/Storage/Projects/SIMPLE/del3/docker
+SCRIPTS_DIR: !!python/object/apply:pathlib.PosixPath
+- /mnt/Storage/Projects/SIMPLE/del3/scripts
+SERVICES:
+  swag:
+    display_name: SWAG
+    description: Nginx reverse proxy + Let's Encrypt SSL automation
+    url: https://github.com/linuxserver/docker-swag
+    version: 6.7.0
+    category:
+      enum: proxy
+    docker_image: linuxserver/swag:6.7.0
+    dependencies:
+    - cloudflared
+    ports:
+      http: 80
+      https: 443
+    alternatives:
+    - name: default
+      description: Standard SWAG configuration with Nginx and Let's Encrypt
+    template: '{''name'': ''default'', ''description'': "Standard SWAG configuration
+      with Nginx and Let''s Encrypt"}.yaml.jinja'
+  socket-proxy:
+    display_name: Socket-Proxy
+    description: WebSocket to TCP/UDP proxy for real-time service bridging
+    url: https://github.com/techblog/socket-proxy
+    version: 0.4.4
+    category:
+      enum: proxy
+    docker_image: ghcr.io/techblog/socket-proxy:0.4.4
+    dependencies: []
+    ports:
+      http: 8082
+    alternatives:
+    - name: default
+      description: Standard Socket Proxy configuration
+    template: '{''name'': ''default'', ''description'': ''Standard Socket Proxy configuration''}.yaml.jinja'
+  authelia:
+    display_name: Authelia
+    description: Open-source high-performance authentication & authorization server
+    url: https://www.authelia.com
+    version: 4.38.8
+    category:
+      enum: auth
+    docker_image: authelia/authelia:4.38.8
+    dependencies:
+      services:
+      - redis
+      - mariadb
+    ports:
+      http: 9091
+    alternatives:
+    - name: default
+      description: Standard Authelia configuration with Redis and MariaDB
+    - name: minimal
+      description: Lightweight Authelia without database dependencies
+    template: '{''name'': ''default'', ''description'': ''Standard Authelia configuration
+      with Redis and MariaDB''}.yaml.jinja'
+TZ: Asia/Kolkata
+HOSTNAME: The-WAR-Machine
+UMASK: '0022'
+SWAG_STAGING: 'false'
+AUTO_GENERATE_PASSWORDS: true

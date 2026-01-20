@@ -240,10 +240,17 @@ class DockerEngine:
             if category == "core":
                 continue
 
+            # Only process categories that have at least one pre-selected service
+            category_services = [service for service in services 
+                                if service.name in pre_selected_services]
+            
+            if not category_services:
+                continue  # Skip categories with no selected services
+
             print(f"\n📋 {category.upper()} SERVICES")
             print("=" * 40)
 
-            for service in services:
+            for service in category_services:
                 # Load about.yaml data for this service
                 about_data = self._load_service_about_data(service.name)
                 service_name = about_data.get('name', service.name)
